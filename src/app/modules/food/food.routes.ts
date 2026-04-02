@@ -9,6 +9,7 @@ import {
 
 const router = Router();
 
+
 // ── Public ────────────────────────────────────────────────
 router.get('/menu', foodController.getFullMenu);
 
