@@ -11,6 +11,7 @@ export const createVisitorSchema = z.object({
   }),
 });
 
+
 export const createInquirySchema = z.object({
   body: z.object({
     name: z.string().min(2).max(100),
