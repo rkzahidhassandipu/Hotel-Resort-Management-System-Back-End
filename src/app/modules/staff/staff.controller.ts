@@ -70,6 +70,7 @@ const getPerformanceReviews = async (req: AuthenticatedRequest, res: Response): 
   sendSuccess(res, reviews, 'Performance reviews retrieved');
 }
 
+
 const getStaffStats = async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
   const stats = await staffService.getStaffStats();
   sendSuccess(res, stats, 'Staff stats retrieved');

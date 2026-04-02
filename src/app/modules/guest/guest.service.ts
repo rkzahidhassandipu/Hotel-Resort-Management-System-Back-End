@@ -101,6 +101,7 @@ const convertToCustomer = async (visitorId: string) => {
     data: { convertedToCustomer: true, convertedUserId: user.id },
   });
 
+  
   const { config } = await import('../../config/env');
   sendEmail({
     to: user.email,
