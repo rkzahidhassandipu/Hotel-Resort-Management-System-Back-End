@@ -59,3 +59,4 @@ export const maintenanceQuerySchema = z.object({
     toDate: z.string().optional(),
   }),
 });
+
