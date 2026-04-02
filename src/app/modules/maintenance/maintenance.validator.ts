@@ -12,6 +12,7 @@ export const createMaintenanceSchema = z.object({
   }),
 });
 
+
 export const updateMaintenanceSchema = z.object({
   body: z.object({
     type: z.enum(['ELECTRICAL', 'PLUMBING', 'HVAC', 'FURNITURE', 'APPLIANCE', 'STRUCTURAL', 'CLEANING', 'OTHER']).optional(),
