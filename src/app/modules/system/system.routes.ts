@@ -11,7 +11,6 @@ import {
 
 const router = Router();
 
-
 // ── Public health check ───────────────────────────────────
 router.get('/health', systemController.getHealth);
 
