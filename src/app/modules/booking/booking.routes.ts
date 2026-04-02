@@ -9,6 +9,7 @@ import {
   bookingStatsQuerySchema,
 } from './booking.validator';
 
+
 const router = Router();
 router.use(authenticate);
 
