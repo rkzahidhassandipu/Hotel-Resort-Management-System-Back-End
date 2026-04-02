@@ -60,6 +60,7 @@ const getStats = async (_req: AuthenticatedRequest, res: Response): Promise<void
   sendSuccess(res, stats, 'Stats retrieved');
 }
 
+
 export const serviceRequestController = {
   create,
   getAll,

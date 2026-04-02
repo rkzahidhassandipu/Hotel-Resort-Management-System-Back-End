@@ -37,6 +37,7 @@ const stripeWebhook = async (req: Request, res: Response): Promise<void> => {
   res.json(result);
 };
 
+
 const getAll = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   if (!req.user) throw new UnauthorizedError();
   const result = await paymentService.getAllPayments(req.query as any, req.user.role, req.user.userId);

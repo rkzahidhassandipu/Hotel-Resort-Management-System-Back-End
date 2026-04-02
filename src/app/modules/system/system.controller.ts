@@ -89,6 +89,7 @@ const grantUserPermission = async (req: AuthenticatedRequest, res: Response): Pr
   sendCreated(res, up, 'Permission granted');
 }
 
+
 const revokeUserPermission = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   await systemService.revokeUserPermission(req.params.userId, req.params.permissionId);
   sendNoContent(res);
