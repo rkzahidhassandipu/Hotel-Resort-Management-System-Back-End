@@ -14,6 +14,7 @@ const create = async (customerId: string, data: {
     if (!booking) throw new BadRequestError('Invalid booking or booking not active');
   }
 
+  
   return prisma.serviceRequest.create({
     data: {
       customerId,
