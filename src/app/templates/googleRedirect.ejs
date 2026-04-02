@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Redirecting...</title>
+  <script>
+    window.onload = function() {
+      const token = '<%= accessToken %>';
+      const refreshToken = '<%= refreshToken %>';
+      window.location.href = '<%= frontendUrl %>/auth/callback?accessToken=' + token + '&refreshToken=' + refreshToken;
+    };
+  </script>
+</head>
+<body style="font-family:Arial,sans-serif;text-align:center;padding:50px;color:#333">
+  <h2>🏨 Hotel & Resort</h2>
+  <p>Login successful! Redirecting you back...</p>
+  <p><small>If you are not redirected automatically, <a href="<%= frontendUrl %>">click here</a>.</small></p>
+</body>
+</html>

@@ -1,0 +1,1285 @@
+// ============================================================
+// HOTEL & RESORT MANAGEMENT SYSTEM - PRISMA SCHEMA
+// Production-Level | 15 Modules | 6 Roles | All Issues Fixed
+// ============================================================
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../src/generated/prisma/client"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Role {
+  ADMIN
+  MANAGER
+  STAFF
+  CUSTOMER
+  MAINTENANCE
+  CHEF
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum MembershipTier {
+  STANDARD
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+}
+
+enum RoomType {
+  SINGLE
+  DOUBLE
+  TWIN
+  SUITE
+  DELUXE
+  PENTHOUSE
+  FAMILY
+  VILLA
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+  CLEANING
+  OUT_OF_ORDER
+  RESERVED
+}
+
+enum BedType {
+  SINGLE
+  DOUBLE
+  QUEEN
+  KING
+  TWIN
+  BUNK
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  NO_SHOW
+  WAITLISTED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  BANK_TRANSFER
+  ONLINE_PAYMENT
+  MOBILE_BANKING
+  CRYPTO
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  OVERDUE
+  VOID
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum OrderType {
+  DINE_IN
+  ROOM_SERVICE
+  TAKEAWAY
+}
+
+enum FoodCategory {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACKS
+  BEVERAGES
+  DESSERTS
+  SPECIAL
+}
+
+enum MaintenanceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  ON_HOLD
+}
+
+enum MaintenancePriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum MaintenanceType {
+  ELECTRICAL
+  PLUMBING
+  HVAC
+  FURNITURE
+  APPLIANCE
+  STRUCTURAL
+  CLEANING
+  OTHER
+}
+
+enum ShiftType {
+  MORNING
+  AFTERNOON
+  EVENING
+  NIGHT
+  FLEXIBLE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum StaffTaskStatus {
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  OVERDUE
+}
+
+enum ServiceRequestStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ServiceRequestType {
+  LAUNDRY
+  ROOM_SERVICE
+  EXTRA_TOWELS
+  EXTRA_PILLOW
+  WAKE_UP_CALL
+  TAXI_BOOKING
+  TOUR_BOOKING
+  SPA_BOOKING
+  SPECIAL_ARRANGEMENT
+  OTHER
+}
+
+enum TransactionType {
+  IN
+  OUT
+  ADJUSTMENT
+  WASTAGE
+  TRANSFER
+  RETURN
+}
+
+enum NotificationType {
+  BOOKING_CONFIRMATION
+  BOOKING_CANCELLATION
+  CHECK_IN_REMINDER
+  CHECK_OUT_REMINDER
+  PAYMENT_RECEIVED
+  PAYMENT_DUE
+  MAINTENANCE_UPDATE
+  SERVICE_UPDATE
+  GENERAL_ALERT
+  SYSTEM_ALERT
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+}
+
+enum StockStatus {
+  SUFFICIENT
+  LOW
+  OUT_OF_STOCK
+  OVERSTOCKED
+}
+
+enum ProcurementStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  ORDERED
+  RECEIVED
+  CANCELLED
+}
+
+enum LogLevel {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+  DEBUG
+}
+
+enum LogAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  EXPORT
+  IMPORT
+  OVERRIDE
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FLAGGED
+}
+
+// ============================================================
+// MODULE 1: USER MANAGEMENT & AUTHENTICATION
+// ============================================================
+
+model User {
+  id       String     @id @default(uuid())
+  email    String     @unique
+  phone    String?    @unique
+  password String
+  role     Role       @default(CUSTOMER)
+  status   UserStatus @default(PENDING_VERIFICATION)
+
+  firstName      String
+  lastName       String
+  gender         Gender?
+  dateOfBirth    DateTime?
+  avatarUrl      String?
+  nationalId     String?   @unique
+  passportNumber String?   @unique
+  nationality    String?
+  address        String?
+  city           String?
+  country        String?
+  zipCode        String?
+
+  emailVerifiedAt     DateTime?
+  emailVerifyToken    String?
+  passwordResetToken  String?
+  passwordResetExpiry DateTime?
+  lastLoginAt         DateTime?
+  lastLoginIp         String?
+  twoFactorEnabled    Boolean   @default(false)
+  twoFactorSecret     String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  sessions              UserSession[]
+  refreshTokens         RefreshToken[]
+  staffProfile          StaffProfile?
+  customerProfile       CustomerProfile?
+  bookings              Booking[]          @relation("CustomerBookings")
+  createdBookings       Booking[]          @relation("StaffCreatedBookings")
+  payments              Payment[]
+  foodOrders            FoodOrder[]
+  serviceRequests       ServiceRequest[]
+  assignedTasks         StaffTask[]        @relation("AssignedTasks")
+  createdTasks          StaffTask[]        @relation("CreatedTasks")
+  maintenanceLogs       MaintenanceLog[]   @relation("MaintenanceWorker")
+  createdMaintenance    MaintenanceLog[]   @relation("MaintenanceCreator")
+  reviews               Review[]
+  notifications         Notification[]
+  systemLogs            SystemLog[]
+  procurementOrders     ProcurementOrder[]
+  permissions           UserPermission[]
+  roleOverridesGranted  RoleOverride[]     @relation("OverrideGrantedBy")
+  roleOverridesReceived RoleOverride[]     @relation("OverrideTarget")
+  housekeepingLogs      HousekeepingLog[]
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String
+  token      String    @unique
+  deviceInfo String?
+  ipAddress  String?
+  expiresAt  DateTime
+  isRevoked  Boolean   @default(false)
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model UserSession {
+  id         String   @id @default(uuid())
+  userId     String
+  token      String   @unique
+  deviceInfo String?
+  ipAddress  String?
+  userAgent  String?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_sessions")
+}
+
+model StaffProfile {
+  id               String    @id @default(uuid())
+  userId           String    @unique
+  employeeId       String    @unique
+  department       String
+  designation      String
+  joiningDate      DateTime
+  salary           Decimal   @db.Decimal(10, 2)
+  bankAccount      String?
+  emergencyContact String?
+  shift            ShiftType @default(MORNING)
+  isOnDuty         Boolean   @default(false)
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shifts             Shift[]
+  performanceReviews PerformanceReview[]
+
+  @@map("staff_profiles")
+}
+
+model CustomerProfile {
+  id             String         @id @default(uuid())
+  userId         String         @unique
+  loyaltyPoints  Int            @default(0)
+  membershipTier MembershipTier @default(STANDARD)
+  totalSpent     Decimal        @default(0) @db.Decimal(12, 2)
+  totalStays     Int            @default(0)
+  preferences    Json?
+  notes          String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("customer_profiles")
+}
+
+// ============================================================
+// MODULE 2: ROOM MANAGEMENT
+// ============================================================
+
+model RoomCategory {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  description  String?
+  basePrice    Decimal  @db.Decimal(10, 2)
+  weekendPrice Decimal? @db.Decimal(10, 2)
+  maxOccupancy Int
+  amenities    String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  rooms Room[]
+
+  @@map("room_categories")
+}
+
+model Room {
+  id             String     @id @default(uuid())
+  roomNumber     String     @unique
+  floor          Int
+  type           RoomType
+  status         RoomStatus @default(AVAILABLE)
+  bedType        BedType
+  maxOccupancy   Int
+  sizeInSqFt     Float?
+  categoryId     String
+  description    String?
+  view           String?
+  smokingAllowed Boolean    @default(false)
+  petFriendly    Boolean    @default(false)
+  isActive       Boolean    @default(true)
+  notes          String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  category         RoomCategory      @relation(fields: [categoryId], references: [id])
+  images           RoomImage[]
+  amenities        RoomAmenity[]
+  bookings         Booking[]
+  maintenanceLogs  MaintenanceLog[]
+  pricingRules     RoomPricingRule[]
+  housekeepingLogs HousekeepingLog[]
+
+  @@index([status])
+  @@index([type])
+  @@map("rooms")
+}
+
+model RoomImage {
+  id        String   @id @default(uuid())
+  roomId    String
+  imageUrl  String
+  caption   String?
+  isPrimary Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@map("room_images")
+}
+
+model Amenity {
+  id       String  @id @default(uuid())
+  name     String  @unique
+  icon     String?
+  category String?
+
+  rooms RoomAmenity[]
+
+  @@map("amenities")
+}
+
+model RoomAmenity {
+  roomId    String
+  amenityId String
+
+  room    Room    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  amenity Amenity @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, amenityId])
+  @@map("room_amenities")
+}
+
+model RoomPricingRule {
+  id            String   @id @default(uuid())
+  roomId        String
+  name          String
+  startDate     DateTime
+  endDate       DateTime
+  pricePerNight Decimal  @db.Decimal(10, 2)
+  reason        String?
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@map("room_pricing_rules")
+}
+
+// ============================================================
+// MODULE 3: BOOKING & RESERVATION
+// ============================================================
+
+model Booking {
+  id                 String        @id @default(uuid())
+  bookingNumber      String        @unique @default(uuid())
+  customerId         String
+  roomId             String
+  createdById        String?
+  status             BookingStatus @default(PENDING)
+  checkInDate        DateTime
+  checkOutDate       DateTime
+  actualCheckIn      DateTime?
+  actualCheckOut     DateTime?
+  nights             Int
+  adults             Int           @default(1)
+  children           Int           @default(0)
+  pricePerNight      Decimal       @db.Decimal(10, 2)
+  subtotal           Decimal       @db.Decimal(12, 2)
+  taxAmount          Decimal       @default(0) @db.Decimal(10, 2)
+  discountAmount     Decimal       @default(0) @db.Decimal(10, 2)
+  totalAmount        Decimal       @db.Decimal(12, 2)
+  specialRequests    String?
+  arrivalTime        String?
+  source             String?
+  promoCode          String?
+  cancellationReason String?
+  cancelledAt        DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  customer        User             @relation("CustomerBookings", fields: [customerId], references: [id])
+  createdBy       User?            @relation("StaffCreatedBookings", fields: [createdById], references: [id])
+  room            Room             @relation(fields: [roomId], references: [id])
+  payments        Payment[]
+  foodOrders      FoodOrder[]
+  serviceRequests ServiceRequest[]
+  reviews         Review[]
+  guests          BookingGuest[]
+
+  @@index([customerId])
+  @@index([roomId])
+  @@index([status])
+  @@index([checkInDate, checkOutDate])
+  @@map("bookings")
+}
+
+model BookingGuest {
+  id         String  @id @default(uuid())
+  bookingId  String
+  firstName  String
+  lastName   String
+  nationalId String?
+  passportNo String?
+  age        Int?
+  isPrimary  Boolean @default(false)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("booking_guests")
+}
+
+// ============================================================
+// MODULE 4: PAYMENT & BILLING
+// ============================================================
+
+model Payment {
+  id              String        @id @default(uuid())
+  paymentNumber   String        @unique @default(uuid())
+  bookingId       String?
+  userId          String
+  amount          Decimal       @db.Decimal(12, 2)
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  currency        String        @default("BDT")
+  transactionId   String?       @unique
+  gatewayResponse Json?
+  notes           String?
+  paidAt          DateTime?
+  refundedAt      DateTime?
+  refundAmount    Decimal?      @db.Decimal(12, 2)
+  refundReason    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  booking Booking? @relation(fields: [bookingId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+  invoice Invoice?
+
+  @@index([userId])
+  @@index([status])
+  @@map("payments")
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  invoiceNumber  String        @unique
+  paymentId      String        @unique
+  status         InvoiceStatus @default(DRAFT)
+  subtotal       Decimal       @db.Decimal(12, 2)
+  taxRate        Decimal       @default(0) @db.Decimal(5, 2)
+  taxAmount      Decimal       @default(0) @db.Decimal(10, 2)
+  discountAmount Decimal       @default(0) @db.Decimal(10, 2)
+  totalAmount    Decimal       @db.Decimal(12, 2)
+  notes          String?
+  issuedAt       DateTime      @default(now())
+  dueDate        DateTime?
+  voidedAt       DateTime?
+  voidReason     String?
+
+  payment Payment       @relation(fields: [paymentId], references: [id])
+  items   InvoiceItem[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String  @id @default(uuid())
+  invoiceId   String
+  description String
+  quantity    Int     @default(1)
+  unitPrice   Decimal @db.Decimal(10, 2)
+  totalPrice  Decimal @db.Decimal(10, 2)
+  category    String?
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_items")
+}
+
+// ============================================================
+// MODULE 5: FOOD & RESTAURANT
+// ============================================================
+
+model MenuCategory {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String?
+  imageUrl    String?
+  isActive    Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  menuItems MenuItem[]
+
+  @@map("menu_categories")
+}
+
+model MenuItem {
+  id              String       @id @default(uuid())
+  categoryId      String
+  name            String
+  description     String?
+  imageUrl        String?
+  price           Decimal      @db.Decimal(10, 2)
+  discountedPrice Decimal?     @db.Decimal(10, 2)
+  foodCategory    FoodCategory @default(LUNCH)
+  preparationTime Int?
+  calories        Int?
+  isVegetarian    Boolean      @default(false)
+  isVegan         Boolean      @default(false)
+  isGlutenFree    Boolean      @default(false)
+  isAvailable     Boolean      @default(true)
+  ingredients     String[]
+  allergens       String[]
+  sortOrder       Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  category   MenuCategory    @relation(fields: [categoryId], references: [id])
+  orderItems FoodOrderItem[]
+
+  @@map("menu_items")
+}
+
+model FoodOrder {
+  id            String      @id @default(uuid())
+  orderNumber   String      @unique @default(uuid())
+  bookingId     String?
+  customerId    String
+  type          OrderType   @default(ROOM_SERVICE)
+  status        OrderStatus @default(PENDING)
+  tableNumber   String?
+  roomNumber    String?
+  subtotal      Decimal     @db.Decimal(10, 2)
+  taxAmount     Decimal     @default(0) @db.Decimal(10, 2)
+  totalAmount   Decimal     @db.Decimal(10, 2)
+  specialNotes  String?
+  estimatedTime Int?
+  confirmedAt   DateTime?
+  preparingAt   DateTime?
+  readyAt       DateTime?
+  deliveredAt   DateTime?
+  cancelledAt   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  booking  Booking?        @relation(fields: [bookingId], references: [id])
+  customer User            @relation(fields: [customerId], references: [id])
+  items    FoodOrderItem[]
+
+  @@index([customerId])
+  @@index([status])
+  @@map("food_orders")
+}
+
+model FoodOrderItem {
+  id             String  @id @default(uuid())
+  orderId        String
+  menuItemId     String
+  quantity       Int
+  unitPrice      Decimal @db.Decimal(10, 2)
+  totalPrice     Decimal @db.Decimal(10, 2)
+  notes          String?
+  customizations Json?
+
+  order    FoodOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem  @relation(fields: [menuItemId], references: [id])
+
+  @@map("food_order_items")
+}
+
+// ============================================================
+// MODULE 6: MAINTENANCE & HOUSEKEEPING
+// ============================================================
+
+model MaintenanceLog {
+  id             String              @id @default(uuid())
+  ticketNumber   String              @unique @default(uuid())
+  roomId         String?
+  location       String?
+  type           MaintenanceType
+  priority       MaintenancePriority @default(MEDIUM)
+  status         MaintenanceStatus   @default(PENDING)
+  title          String
+  description    String
+  reportedById   String
+  assignedToId   String?
+  scheduledAt    DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  estimatedHours Float?
+  actualHours    Float?
+  cost           Decimal?            @db.Decimal(10, 2)
+  notes          String?
+  images         String[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  room       Room?             @relation(fields: [roomId], references: [id])
+  reportedBy User              @relation("MaintenanceCreator", fields: [reportedById], references: [id])
+  assignedTo User?             @relation("MaintenanceWorker", fields: [assignedToId], references: [id])
+  parts      MaintenancePart[]
+
+  @@index([status])
+  @@index([priority])
+  @@map("maintenance_logs")
+}
+
+model MaintenancePart {
+  id            String  @id @default(uuid())
+  maintenanceId String
+  partName      String
+  quantity      Int
+  unitCost      Decimal @db.Decimal(10, 2)
+  totalCost     Decimal @db.Decimal(10, 2)
+
+  maintenance MaintenanceLog @relation(fields: [maintenanceId], references: [id], onDelete: Cascade)
+
+  @@map("maintenance_parts")
+}
+
+model HousekeepingLog {
+  id          String    @id @default(uuid())
+  roomId      String
+  staffId     String?
+  date        DateTime  @default(now())
+  status      String
+  type        String
+  startedAt   DateTime?
+  completedAt DateTime?
+  notes       String?
+  checklist   Json?
+
+  room  Room  @relation(fields: [roomId], references: [id])
+  staff User? @relation(fields: [staffId], references: [id])
+
+  @@index([roomId])
+  @@map("housekeeping_logs")
+}
+
+// ============================================================
+// MODULE 7: STAFF MANAGEMENT
+// ============================================================
+
+model Shift {
+  id              String    @id @default(uuid())
+  staffProfileId  String
+  type            ShiftType
+  date            DateTime
+  startTime       DateTime
+  endTime         DateTime
+  actualStartTime DateTime?
+  actualEndTime   DateTime?
+  isPresent       Boolean?
+  overtimeHours   Float?
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
+
+  @@map("shifts")
+}
+
+model StaffTask {
+  id           String          @id @default(uuid())
+  title        String
+  description  String?
+  assignedToId String
+  createdById  String
+  status       StaffTaskStatus @default(ASSIGNED)
+  priority     TaskPriority    @default(MEDIUM)
+  dueDate      DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  notes        String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  assignedTo User @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  createdBy  User @relation("CreatedTasks", fields: [createdById], references: [id])
+
+  @@map("staff_tasks")
+}
+
+model PerformanceReview {
+  id             String   @id @default(uuid())
+  staffProfileId String
+  reviewedById   String?
+  period         String
+  rating         Float
+  punctuality    Float?
+  productivity   Float?
+  attitude       Float?
+  teamwork       Float?
+  comments       String?
+  goals          String?
+  reviewedAt     DateTime @default(now())
+
+  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
+
+  @@map("performance_reviews")
+}
+
+// ============================================================
+// MODULE 8: SERVICE REQUESTS
+// ============================================================
+
+model ServiceRequest {
+  id            String               @id @default(uuid())
+  requestNumber String               @unique @default(uuid())
+  bookingId     String?
+  customerId    String
+  assignedToId  String?
+  type          ServiceRequestType
+  status        ServiceRequestStatus @default(PENDING)
+  description   String?
+  scheduledAt   DateTime?
+  completedAt   DateTime?
+  priority      TaskPriority         @default(MEDIUM)
+  notes         String?
+  cost          Decimal?             @db.Decimal(10, 2)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  booking  Booking? @relation(fields: [bookingId], references: [id])
+  customer User     @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@index([status])
+  @@map("service_requests")
+}
+
+// ============================================================
+// MODULE 9: INVENTORY MANAGEMENT
+// ============================================================
+
+model InventoryCategory {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String?
+
+  items InventoryItem[]
+
+  @@map("inventory_categories")
+}
+
+model InventoryItem {
+  id           String      @id @default(uuid())
+  categoryId   String
+  name         String
+  sku          String      @unique
+  unit         String
+  currentStock Float       @default(0)
+  minimumStock Float       @default(0)
+  maximumStock Float?
+  reorderPoint Float       @default(0)
+  unitCost     Decimal     @db.Decimal(10, 2)
+  supplier     String?
+  location     String?
+  expiryDate   DateTime?
+  status       StockStatus @default(SUFFICIENT)
+  notes        String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  category         InventoryCategory      @relation(fields: [categoryId], references: [id])
+  transactions     InventoryTransaction[]
+  procurementItems ProcurementItem[]
+
+  @@map("inventory_items")
+}
+
+model InventoryTransaction {
+  id          String          @id @default(uuid())
+  itemId      String
+  type        TransactionType
+  quantity    Float
+  unitCost    Decimal?        @db.Decimal(10, 2)
+  totalCost   Decimal?        @db.Decimal(10, 2)
+  reference   String?
+  performedBy String?
+  notes       String?
+  createdAt   DateTime        @default(now())
+
+  item InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@index([itemId])
+  @@map("inventory_transactions")
+}
+
+model ProcurementOrder {
+  id            String            @id @default(uuid())
+  orderNumber   String            @unique @default(uuid())
+  requestedById String
+  approvedById  String?
+  status        ProcurementStatus @default(DRAFT)
+  supplier      String?
+  totalAmount   Decimal?          @db.Decimal(12, 2)
+  expectedDate  DateTime?
+  receivedDate  DateTime?
+  notes         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  requestedBy User              @relation(fields: [requestedById], references: [id])
+  items       ProcurementItem[]
+
+  @@map("procurement_orders")
+}
+
+model ProcurementItem {
+  id              String  @id @default(uuid())
+  orderId         String
+  inventoryItemId String
+  quantity        Float
+  unitCost        Decimal @db.Decimal(10, 2)
+  totalCost       Decimal @db.Decimal(10, 2)
+  receivedQty     Float?
+  notes           String?
+
+  order         ProcurementOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem    @relation(fields: [inventoryItemId], references: [id])
+
+  @@map("procurement_items")
+}
+
+// ============================================================
+// MODULE 10: REVIEW & FEEDBACK
+// ============================================================
+
+model Review {
+  id                String       @id @default(uuid())
+  bookingId         String?
+  userId            String
+  overallRating     Float
+  cleanlinessRating Float?
+  serviceRating     Float?
+  foodRating        Float?
+  locationRating    Float?
+  valueRating       Float?
+  title             String?
+  comment           String?
+  status            ReviewStatus @default(PENDING)
+  isAnonymous       Boolean      @default(false)
+  managerResponse   String?
+  respondedAt       DateTime?
+  respondedById     String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  booking Booking? @relation(fields: [bookingId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+
+  @@index([status])
+  @@map("reviews")
+}
+
+// ============================================================
+// MODULE 11: NOTIFICATION SYSTEM
+// ============================================================
+
+model Notification {
+  id        String              @id @default(uuid())
+  userId    String
+  type      NotificationType
+  channel   NotificationChannel @default(IN_APP)
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean             @default(false)
+  readAt    DateTime?
+  sentAt    DateTime?
+  isSent    Boolean             @default(false)
+  error     String?
+  createdAt DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model NotificationTemplate {
+  id           String              @id @default(uuid())
+  name         String              @unique
+  type         NotificationType
+  channel      NotificationChannel
+  subject      String?
+  bodyTemplate String
+  isActive     Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@map("notification_templates")
+}
+
+// ============================================================
+// MODULE 12: REPORTS & ANALYTICS
+// ============================================================
+
+model DailyReport {
+  id               String   @id @default(uuid())
+  date             DateTime @unique
+  totalBookings    Int      @default(0)
+  checkIns         Int      @default(0)
+  checkOuts        Int      @default(0)
+  cancellations    Int      @default(0)
+  noShows          Int      @default(0)
+  totalRevenue     Decimal  @default(0) @db.Decimal(12, 2)
+  roomRevenue      Decimal  @default(0) @db.Decimal(12, 2)
+  foodRevenue      Decimal  @default(0) @db.Decimal(12, 2)
+  serviceRevenue   Decimal  @default(0) @db.Decimal(12, 2)
+  occupancyRate    Float?
+  averageDailyRate Decimal? @db.Decimal(10, 2)
+  revPAR           Decimal? @db.Decimal(10, 2)
+  totalGuests      Int      @default(0)
+  newCustomers     Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  @@map("daily_reports")
+}
+
+model MonthlyReport {
+  id               String    @id @default(uuid())
+  year             Int
+  month            Int
+  totalBookings    Int       @default(0)
+  totalRevenue     Decimal   @default(0) @db.Decimal(14, 2)
+  totalGuests      Int       @default(0)
+  averageOccupancy Float?
+  topRoomType      String?
+  topRevenueDay    DateTime?
+  staffPerformance Json?
+  createdAt        DateTime  @default(now())
+
+  @@unique([year, month])
+  @@map("monthly_reports")
+}
+
+// ============================================================
+// MODULE 13: SECURITY & ROLES
+// ============================================================
+
+model Permission {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  resource    String
+  action      String
+  description String?
+
+  userPermissions UserPermission[]
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserPermission {
+  id           String    @id @default(uuid())
+  userId       String
+  permissionId String
+  grantedById  String?
+  grantedAt    DateTime  @default(now())
+  expiresAt    DateTime?
+  isActive     Boolean   @default(true)
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionId])
+  @@map("user_permissions")
+}
+
+model RolePermission {
+  id           String @id @default(uuid())
+  role         Role
+  permissionId String
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([role, permissionId])
+  @@map("role_permissions")
+}
+
+model RoleOverride {
+  id           String    @id @default(uuid())
+  targetUserId String
+  grantedById  String
+  overrideRole Role
+  reason       String
+  isActive     Boolean   @default(true)
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  targetUser User @relation("OverrideTarget", fields: [targetUserId], references: [id])
+  grantedBy  User @relation("OverrideGrantedBy", fields: [grantedById], references: [id])
+
+  @@map("role_overrides")
+}
+
+// ============================================================
+// MODULE 14: GUEST / VISITOR MODULE
+// ============================================================
+
+model VisitorRegistration {
+  id                  String   @id @default(uuid())
+  firstName           String
+  lastName            String
+  email               String
+  phone               String?
+  purpose             String?
+  visitedAt           DateTime @default(now())
+  handledById         String?
+  notes               String?
+  convertedToCustomer Boolean  @default(false)
+  convertedUserId     String?
+
+  @@map("visitor_registrations")
+}
+
+model RoomInquiry {
+  id           String    @id @default(uuid())
+  name         String
+  email        String
+  phone        String?
+  checkIn      DateTime
+  checkOut     DateTime
+  adults       Int       @default(1)
+  children     Int       @default(0)
+  roomType     RoomType?
+  budget       Decimal?  @db.Decimal(10, 2)
+  message      String?
+  isResolved   Boolean   @default(false)
+  resolvedById String?
+  resolvedAt   DateTime?
+  notes        String?
+  createdAt    DateTime  @default(now())
+
+  @@map("room_inquiries")
+}
+
+model HotelInfo {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  isPublic    Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+
+  @@map("hotel_info")
+}
+
+// ============================================================
+// MODULE 15: SYSTEM LOGS
+// ============================================================
+
+model SystemLog {
+  id           String    @id @default(uuid())
+  userId       String?
+  action       LogAction
+  level        LogLevel  @default(INFO)
+  resource     String
+  resourceId   String?
+  description  String
+  oldValue     Json?
+  newValue     Json?
+  ipAddress    String?
+  userAgent    String?
+  sessionId    String?
+  duration     Int?
+  errorMessage String?
+  stackTrace   String?
+  createdAt    DateTime  @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([resource, resourceId])
+  @@index([level])
+  @@index([createdAt])
+  @@map("system_logs")
+}
+
+model ErrorLog {
+  id           String    @id @default(uuid())
+  message      String
+  stackTrace   String?
+  context      Json?
+  level        LogLevel  @default(ERROR)
+  isResolved   Boolean   @default(false)
+  resolvedAt   DateTime?
+  resolvedById String?
+  createdAt    DateTime  @default(now())
+
+  @@map("error_logs")
+}
+
+model AuditTrail {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  tableName String
+  recordId  String
+  before    Json?
+  after     Json?
+  reason    String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([tableName, recordId])
+  @@index([userId])
+  @@map("audit_trail")
+}

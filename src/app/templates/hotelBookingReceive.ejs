@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Booking Confirmation</title></head>
+<body style="font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0">
+  <div style="max-width:600px;margin:30px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.1)">
+    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:30px;text-align:center">
+      <h1 style="color:#fff;margin:0">🏨 Hotel & Resort</h1>
+      <p style="color:#c9a84c;margin:5px 0 0">Booking Confirmation</p>
+    </div>
+    <div style="padding:35px;color:#333">
+      <h2>✅ Booking Confirmed!</h2>
+      <p>Dear <%= guest.firstName %> <%= guest.lastName %>,</p>
+      <p>Your reservation has been received and confirmed.</p>
+      <div style="background:#f0f4ff;border-left:4px solid #c9a84c;padding:20px;border-radius:4px;margin:20px 0">
+        <p style="margin:0 0 8px"><strong>Booking #:</strong> <%= booking.bookingNumber %></p>
+        <p style="margin:0 0 8px"><strong>Room:</strong> <%= room.roomNumber %> (<%= room.type %>)</p>
+        <p style="margin:0 0 8px"><strong>Check-in:</strong> <%= new Date(booking.checkInDate).toLocaleDateString() %></p>
+        <p style="margin:0 0 8px"><strong>Check-out:</strong> <%= new Date(booking.checkOutDate).toLocaleDateString() %></p>
+        <p style="margin:0 0 8px"><strong>Nights:</strong> <%= booking.nights %></p>
+        <p style="margin:0 0 8px"><strong>Guests:</strong> <%= booking.adults %> adult(s), <%= booking.children %> child(ren)</p>
+        <p style="margin:0"><strong>Total Amount:</strong> BDT <%= booking.totalAmount.toLocaleString() %></p>
+      </div>
+      <p>We look forward to welcoming you. For any queries, please contact us.</p>
+    </div>
+    <div style="background:#f9f9f9;padding:20px;text-align:center;font-size:12px;color:#999;border-top:1px solid #eee">
+      © <%= new Date().getFullYear() %> Hotel & Resort Management System
+    </div>
+  </div>
+</body>
+</html>
