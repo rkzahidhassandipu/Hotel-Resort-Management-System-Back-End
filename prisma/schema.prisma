@@ -286,10 +286,10 @@ enum ReviewStatus {
 // ============================================================
 
 model User {
-  id                  String     @id @default(uuid())
+  id                  String     @id @default(cuid())
   email               String     @unique
   phone               String?    @unique
-  password      String
+  password            String
   role                Role       @default(CUSTOMER)
   status              UserStatus @default(PENDING_VERIFICATION)
 
@@ -349,7 +349,7 @@ model User {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   userId    String
   token     String   @unique
   deviceInfo String?
@@ -367,7 +367,7 @@ model RefreshToken {
 }
 
 model UserSession {
-  id         String   @id @default(uuid())
+  id         String   @id @default(cuid())
   userId     String
   token      String   @unique
   deviceInfo String?
@@ -384,7 +384,7 @@ model UserSession {
 }
 
 model StaffProfile {
-  id               String    @id @default(uuid())
+  id               String    @id @default(cuid())
   userId           String    @unique
   employeeId       String    @unique
   department       String
@@ -404,7 +404,7 @@ model StaffProfile {
 }
 
 model CustomerProfile {
-  id             String         @id @default(uuid())
+  id             String         @id @default(cuid())
   userId         String         @unique
   loyaltyPoints  Int            @default(0)
   membershipTier MembershipTier @default(STANDARD)
@@ -423,7 +423,7 @@ model CustomerProfile {
 // ============================================================
 
 model RoomCategory {
-  id           String   @id @default(uuid())
+  id           String   @id @default(cuid())
   name         String   @unique
   description  String?
   basePrice    Decimal  @db.Decimal(10, 2)
@@ -439,7 +439,7 @@ model RoomCategory {
 }
 
 model Room {
-  id             String     @id @default(uuid())
+  id             String     @id @default(cuid())
   roomNumber     String     @unique
   floor          Int
   type           RoomType
@@ -471,7 +471,7 @@ model Room {
 }
 
 model RoomImage {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   roomId    String
   imageUrl  String
   caption   String?
@@ -485,7 +485,7 @@ model RoomImage {
 }
 
 model Amenity {
-  id       String        @id @default(uuid())
+  id       String        @id @default(cuid())
   name     String        @unique
   icon     String?
   category String?
@@ -507,7 +507,7 @@ model RoomAmenity {
 }
 
 model RoomPricingRule {
-  id            String   @id @default(uuid())
+  id            String   @id @default(cuid())
   roomId        String
   name          String
   startDate     DateTime
@@ -525,8 +525,8 @@ model RoomPricingRule {
 // ============================================================
 
 model Booking {
-  id                 String        @id @default(uuid())
-  bookingNumber      String        @unique @default(uuid())
+  id                 String        @id @default(cuid())
+  bookingNumber      String        @unique @default(cuid())
   customerId         String
   roomId             String
   createdById        String?
@@ -569,7 +569,7 @@ model Booking {
 }
 
 model BookingGuest {
-  id        String  @id @default(uuid())
+  id        String  @id @default(cuid())
   bookingId String
   firstName String
   lastName  String
@@ -588,8 +588,8 @@ model BookingGuest {
 // ============================================================
 
 model Payment {
-  id            String        @id @default(uuid())
-  paymentNumber String        @unique @default(uuid())
+  id            String        @id @default(cuid())
+  paymentNumber String        @unique @default(cuid())
   bookingId     String?
   userId        String
   amount        Decimal       @db.Decimal(12, 2)
@@ -616,7 +616,7 @@ model Payment {
 }
 
 model Invoice {
-  id             String        @id @default(uuid())
+  id             String        @id @default(cuid())
   invoiceNumber  String        @unique
   paymentId      String        @unique
   status         InvoiceStatus @default(DRAFT)
@@ -638,7 +638,7 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id          String   @id @default(uuid())
+  id          String   @id @default(cuid())
   invoiceId   String
   description String
   quantity    Int      @default(1)
@@ -656,7 +656,7 @@ model InvoiceItem {
 // ============================================================
 
 model MenuCategory {
-  id          String     @id @default(uuid())
+  id          String     @id @default(cuid())
   name        String     @unique
   description String?
   imageUrl    String?
@@ -669,7 +669,7 @@ model MenuCategory {
 }
 
 model MenuItem {
-  id              String       @id @default(uuid())
+  id              String       @id @default(cuid())
   categoryId      String
   name            String
   description     String?
@@ -696,8 +696,8 @@ model MenuItem {
 }
 
 model FoodOrder {
-  id            String      @id @default(uuid())
-  orderNumber   String      @unique @default(uuid())
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique @default(cuid())
   bookingId     String?
   customerId    String
   type          OrderType   @default(ROOM_SERVICE)
@@ -727,7 +727,7 @@ model FoodOrder {
 }
 
 model FoodOrderItem {
-  id             String    @id @default(uuid())
+  id             String    @id @default(cuid())
   orderId        String
   menuItemId     String
   quantity       Int
@@ -747,8 +747,8 @@ model FoodOrderItem {
 // ============================================================
 
 model MaintenanceLog {
-  id             String              @id @default(uuid())
-  ticketNumber   String              @unique @default(uuid())
+  id             String              @id @default(cuid())
+  ticketNumber   String              @unique @default(cuid())
   roomId         String?
   location       String?
   type           MaintenanceType
@@ -780,7 +780,7 @@ model MaintenanceLog {
 }
 
 model MaintenancePart {
-  id            String         @id @default(uuid())
+  id            String         @id @default(cuid())
   maintenanceId String
   partName      String
   quantity      Int
@@ -793,7 +793,7 @@ model MaintenancePart {
 }
 
 model HousekeepingLog {
-  id          String    @id @default(uuid())
+  id          String    @id @default(cuid())
   roomId      String
   staffId     String?
   date        DateTime  @default(now())
@@ -816,7 +816,7 @@ model HousekeepingLog {
 // ============================================================
 
 model Shift {
-  id              String       @id @default(uuid())
+  id              String       @id @default(cuid())
   staffProfileId  String
   type            ShiftType
   date            DateTime
@@ -835,7 +835,7 @@ model Shift {
 }
 
 model StaffTask {
-  id           String          @id @default(uuid())
+  id           String          @id @default(cuid())
   title        String
   description  String?
   assignedToId String
@@ -856,7 +856,7 @@ model StaffTask {
 }
 
 model PerformanceReview {
-  id             String       @id @default(uuid())
+  id             String       @id @default(cuid())
   staffProfileId String
   reviewedById   String?
   period         String
@@ -879,8 +879,8 @@ model PerformanceReview {
 // ============================================================
 
 model ServiceRequest {
-  id            String               @id @default(uuid())
-  requestNumber String               @unique @default(uuid())
+  id            String               @id @default(cuid())
+  requestNumber String               @unique @default(cuid())
   bookingId     String?
   customerId    String
   assignedToId  String?
@@ -908,7 +908,7 @@ model ServiceRequest {
 // ============================================================
 
 model InventoryCategory {
-  id          String          @id @default(uuid())
+  id          String          @id @default(cuid())
   name        String          @unique
   description String?
 
@@ -918,7 +918,7 @@ model InventoryCategory {
 }
 
 model InventoryItem {
-  id           String              @id @default(uuid())
+  id           String              @id @default(cuid())
   categoryId   String
   name         String
   sku          String              @unique
@@ -944,7 +944,7 @@ model InventoryItem {
 }
 
 model InventoryTransaction {
-  id          String          @id @default(uuid())
+  id          String          @id @default(cuid())
   itemId      String
   type        TransactionType
   quantity    Float
@@ -962,8 +962,8 @@ model InventoryTransaction {
 }
 
 model ProcurementOrder {
-  id            String            @id @default(uuid())
-  orderNumber   String            @unique @default(uuid())
+  id            String            @id @default(cuid())
+  orderNumber   String            @unique @default(cuid())
   requestedById String
   approvedById  String?
   status        ProcurementStatus @default(DRAFT)
@@ -982,7 +982,7 @@ model ProcurementOrder {
 }
 
 model ProcurementItem {
-  id              String           @id @default(uuid())
+  id              String           @id @default(cuid())
   orderId         String
   inventoryItemId String
   quantity        Float
@@ -1002,7 +1002,7 @@ model ProcurementItem {
 // ============================================================
 
 model Review {
-  id                String       @id @default(uuid())
+  id                String       @id @default(cuid())
   bookingId         String?
   userId            String
   overallRating     Float
@@ -1033,7 +1033,7 @@ model Review {
 // ============================================================
 
 model Notification {
-  id        String              @id @default(uuid())
+  id        String              @id @default(cuid())
   userId    String
   type      NotificationType
   channel   NotificationChannel @default(IN_APP)
@@ -1054,7 +1054,7 @@ model Notification {
 }
 
 model NotificationTemplate {
-  id           String              @id @default(uuid())
+  id           String              @id @default(cuid())
   name         String              @unique
   type         NotificationType
   channel      NotificationChannel
@@ -1072,7 +1072,7 @@ model NotificationTemplate {
 // ============================================================
 
 model DailyReport {
-  id               String   @id @default(uuid())
+  id               String   @id @default(cuid())
   date             DateTime @unique
   totalBookings    Int      @default(0)
   checkIns         Int      @default(0)
@@ -1094,7 +1094,7 @@ model DailyReport {
 }
 
 model MonthlyReport {
-  id               String   @id @default(uuid())
+  id               String   @id @default(cuid())
   year             Int
   month            Int
   totalBookings    Int      @default(0)
@@ -1115,7 +1115,7 @@ model MonthlyReport {
 // ============================================================
 
 model Permission {
-  id          String            @id @default(uuid())
+  id          String            @id @default(cuid())
   name        String            @unique
   resource    String
   action      String
@@ -1128,7 +1128,7 @@ model Permission {
 }
 
 model UserPermission {
-  id           String     @id @default(uuid())
+  id           String     @id @default(cuid())
   userId       String
   permissionId String
   grantedById  String?
@@ -1144,7 +1144,7 @@ model UserPermission {
 }
 
 model RolePermission {
-  id           String     @id @default(uuid())
+  id           String     @id @default(cuid())
   role         Role
   permissionId String
 
@@ -1155,7 +1155,7 @@ model RolePermission {
 }
 
 model RoleOverride {
-  id           String    @id @default(uuid())
+  id           String    @id @default(cuid())
   targetUserId String
   grantedById  String
   overrideRole Role
@@ -1175,7 +1175,7 @@ model RoleOverride {
 // ============================================================
 
 model VisitorRegistration {
-  id                  String   @id @default(uuid())
+  id                  String   @id @default(cuid())
   firstName           String
   lastName            String
   email               String
@@ -1191,7 +1191,7 @@ model VisitorRegistration {
 }
 
 model RoomInquiry {
-  id           String    @id @default(uuid())
+  id           String    @id @default(cuid())
   name         String
   email        String
   phone        String?
@@ -1212,7 +1212,7 @@ model RoomInquiry {
 }
 
 model HotelInfo {
-  id          String   @id @default(uuid())
+  id          String   @id @default(cuid())
   key         String   @unique
   value       String
   description String?
@@ -1227,7 +1227,7 @@ model HotelInfo {
 // ============================================================
 
 model SystemLog {
-  id           String    @id @default(uuid())
+  id           String    @id @default(cuid())
   userId       String?
   action       LogAction
   level        LogLevel  @default(INFO)
@@ -1254,7 +1254,7 @@ model SystemLog {
 }
 
 model ErrorLog {
-  id           String    @id @default(uuid())
+  id           String    @id @default(cuid())
   message      String
   stackTrace   String?
   context      Json?
@@ -1268,7 +1268,7 @@ model ErrorLog {
 }
 
 model AuditTrail {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   userId    String?
   action    String
   tableName String

@@ -43,8 +43,10 @@ router.delete('/:id/pricing-rules/:ruleId', authorize('ADMIN', 'MANAGER'), roomC
 // Categories
 router.post('/categories/new', authorize('ADMIN'), validateRequest(createCategorySchema), roomController.createCategory);
 router.put('/categories/:id', authorize('ADMIN'), roomController.updateCategory);
+router.delete('/categories/:id', authorize('ADMIN'), roomController.deleteCategory);
 
 // Amenity management
 router.post('/amenities/new', authorize('ADMIN'), roomController.createAmenity);
+router.delete('/amenities/:id', authorize('ADMIN'), roomController.deleteAmenity);
 
 export default router;

@@ -26,6 +26,7 @@ export const uploadToCloudinary = async (
       },
       (error, result) => {
         if (error || !result) {
+          console.error("Cloudinary Error Detail:", error);
           reject(new AppError('Image upload failed', 500));
           return;
         }

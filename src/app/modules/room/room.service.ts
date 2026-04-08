@@ -16,20 +16,50 @@ const ROOM_SELECT = {
 
   // ── Create Room ───────────────────────────────────────────
 
-const createRoom = async (data: {
-  roomNumber: string; floor: number; type: string; bedType: string;
-  maxOccupancy: number; sizeInSqFt?: number; categoryId: string;
-  description?: string; view?: string; smokingAllowed?: boolean;
-  petFriendly?: boolean; notes?: string;
-}) => {
+const createRoom = async (
+  data: {
+    roomNumber: string;
+    floor: number;
+    type: string;
+    bedType: string;
+    maxOccupancy: number;
+    sizeInSqFt?: number;
+    categoryId: string;
+    description?: string;
+    view?: string;
+    smokingAllowed?: boolean;
+    petFriendly?: boolean;
+    notes?: string;
+  },
+  files?: Express.Multer.File[]
+) => {
   const exists = await prisma.room.findUnique({ where: { roomNumber: data.roomNumber } });
   if (exists) throw new ConflictError(`Room ${data.roomNumber} already exists`);
 
   const category = await prisma.roomCategory.findUnique({ where: { id: data.categoryId } });
   if (!category) throw new NotFoundError('Room category not found');
 
-  return prisma.room.create({ data: data as any, select: ROOM_SELECT });
-}
+  // Create the room
+  const room = await prisma.room.create({ data: data as any, select: ROOM_SELECT });
+
+  // Upload images if any
+  if (files && files.length > 0) {
+    const uploads = await Promise.all(
+      files.map((file, index) =>
+        uploadToCloudinary(file.buffer, 'rooms').then((result) => ({
+          roomId: room.id,
+          imageUrl: result.secureUrl,
+          isPrimary: index === 0, // first image as primary
+          sortOrder: index,
+        }))
+      )
+    );
+    await prisma.roomImage.createMany({ data: uploads });
+  }
+
+  // Return room with images
+  return prisma.room.findUnique({ where: { id: room.id }, select: ROOM_SELECT });
+};
 
 const getAllRooms = async (query: {
   page?: string; limit?: string; search?: string; type?: RoomType;
@@ -89,17 +119,35 @@ const updateRoom = async (id: string, data: Partial<{
   return prisma.room.update({ where: { id }, data: data as any, select: ROOM_SELECT });
 }
 
-const deleteRoom = async (id: string) => {
-  const room = await prisma.room.findUnique({ where: { id } });
+export const checkActiveBooking = async (roomId: string): Promise<boolean> => {
+  const booking = await prisma.booking.findFirst({
+    where: { 
+      roomId,
+      status: { in: ['CONFIRMED', 'CHECKED_IN'] } 
+    }
+  });
+  return !!booking; // true if active booking exists
+};
+
+const deleteRoom =  async (roomId: string) => {
+  const room = await prisma.room.findUnique({ where: { id: roomId }, include: { images: true } });
   if (!room) throw new NotFoundError('Room not found');
 
   const activeBooking = await prisma.booking.findFirst({
-    where: { roomId: id, status: { in: ['CONFIRMED', 'CHECKED_IN'] } },
+    where: { roomId, status: { in: ['CONFIRMED', 'CHECKED_IN'] } },
   });
   if (activeBooking) throw new BadRequestError('Cannot delete room with active bookings');
 
-  await prisma.room.update({ where: { id }, data: { isActive: false } });
-}
+  // Delete images from Cloudinary + DB
+  for (const img of room.images) {
+    const publicId = img.imageUrl.split('/').slice(-2).join('/').split('.')[0];
+    await deleteFromCloudinary(`hotel-management/rooms/${publicId}`).catch(() => {});
+    await prisma.roomImage.delete({ where: { id: img.id } });
+  }
+
+  // Delete room
+  await prisma.room.delete({ where: { id: roomId } });
+};
 
 const checkAvailability = async (query: {
   checkIn: string; checkOut: string; type?: string;
@@ -318,4 +366,5 @@ export const roomService = {
   getRoomStats,
   getAllAmenities,
   createAmenity,
+  checkActiveBooking
 };

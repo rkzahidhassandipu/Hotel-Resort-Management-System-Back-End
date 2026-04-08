@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice #{{invoiceNumber}}</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+      background: #f8f9fa;
+    }
+
+    .invoice-container {
+      max-width: 800px;
+      margin: auto;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      color: #fff;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .header p {
+      margin: 5px 0 0;
+      color: #c9a84c;
+      font-weight: 500;
+      letter-spacing: 1px;
+    }
+
+    .section {
+      padding: 30px;
+    }
+
+    .section table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+
+    .section th, .section td {
+      padding: 12px 10px;
+      text-align: left;
+    }
+
+    .section th {
+      background: #f0f4ff;
+      border-bottom: 2px solid #c9a84c;
+    }
+
+    .section td {
+      border-bottom: 1px solid #eee;
+    }
+
+    .total-row td {
+      font-weight: bold;
+      color: #1a1a2e;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #999;
+      padding: 20px;
+      border-top: 1px solid #eee;
+    }
+
+    @media (max-width: 600px) {
+      .section th, .section td {
+        padding: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="invoice-container">
+    <div class="header">
+      <h1>🏨 Hotel & Resort</h1>
+      <p>INVOICE</p>
+    </div>
+
+    <div class="section">
+      <table>
+        <tr>
+          <td><strong>Invoice #</strong></td>
+          <td>{{invoiceNumber}}</td>
+        </tr>
+        <tr>
+          <td><strong>Date</strong></td>
+          <td>{{invoiceDate}}</td>
+        </tr>
+        <tr>
+          <td><strong>Customer</strong></td>
+          <td>{{customerName}}</td>
+        </tr>
+        <tr>
+          <td><strong>Email</strong></td>
+          <td>{{customerEmail}}</td>
+        </tr>
+      </table>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each items}}
+          <tr>
+            <td>{{description}}</td>
+            <td>{{quantity}}</td>
+            <td>{{unitPrice}}</td>
+            <td>{{totalPrice}}</td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+
+      <table>
+        <tr>
+          <td>Subtotal</td>
+          <td>{{subtotal}}</td>
+        </tr>
+        <tr>
+          <td>Tax ({{taxRate}}%)</td>
+          <td>{{taxAmount}}</td>
+        </tr>
+        <tr class="total-row">
+          <td>Total</td>
+          <td>{{totalAmount}}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="footer">
+      © {{year}} Hotel & Resort Management System. Thank you for your business!
+    </div>
+  </div>
+</body>
+</html>

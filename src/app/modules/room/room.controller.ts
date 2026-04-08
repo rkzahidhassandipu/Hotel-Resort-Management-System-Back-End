@@ -1,13 +1,18 @@
 import { Response } from 'express';
 import { roomService } from './room.service';
 import { AuthenticatedRequest } from '../../interfaces';
-import { sendSuccess, sendCreated, sendNoContent } from '../../utils/helpers';
-import { BadRequestError } from '../../errorHelpers/AppError';
+import { sendSuccess, sendCreated, sendNoContent, sendError } from '../../utils/helpers';
+import { BadRequestError, NotFoundError } from '../../errorHelpers/AppError';
 
-const createRoom = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const room = await roomService.createRoom(req.body);
-  sendCreated(res, room, 'Room created');
-}
+const createRoom = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const files = req.files as Express.Multer.File[];
+    const room = await roomService.createRoom(req.body, files);
+    sendCreated(res, room, 'Room created with images');
+  } catch (err: any) {
+    sendError(res, err);
+  }
+};
 
 const getAllRooms = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const result = await roomService.getAllRooms(req.query as any);
@@ -24,10 +29,25 @@ const updateRoom = async (req: AuthenticatedRequest, res: Response): Promise<voi
   sendSuccess(res, room, 'Room updated');
 }
 
-const deleteRoom = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  await roomService.deleteRoom(req.params.id);
-  sendNoContent(res);
-}
+const deleteRoom = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const roomId = req.params.id;
+
+    // Check if room exists
+    const room = await roomService.getRoomById(roomId);
+
+    // Check active bookings
+    const hasActiveBooking = await roomService.checkActiveBooking(roomId);
+    if (hasActiveBooking) throw new BadRequestError('Cannot delete room with active bookings');
+
+    // Delete room + images via service
+    await roomService.deleteRoom(roomId);
+
+    sendNoContent(res);
+  } catch (err: any) {
+    sendError(res, err);
+  }
+};
 
 const checkAvailability = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const rooms = await roomService.checkAvailability(req.query as any);
@@ -96,6 +116,16 @@ const createAmenity = async (req: AuthenticatedRequest, res: Response): Promise<
   sendCreated(res, amenity, 'Amenity created');
 }
 
+const deleteCategory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  await roomService.deleteCategory(req.params.id);
+  sendNoContent(res);
+};
+
+const deleteAmenity = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  await roomService.deleteAmenity(req.params.id);
+  sendNoContent(res);
+};
+
 export const roomController = {
   createRoom,
   getAllRooms,
@@ -112,7 +142,9 @@ export const roomController = {
   createCategory,
   getAllCategories,
   updateCategory,
+  deleteCategory,
   getRoomStats,
   getAllAmenities,
   createAmenity,
+  deleteAmenity,
 };

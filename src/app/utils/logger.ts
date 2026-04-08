@@ -2,7 +2,9 @@ import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import path from 'path';
 
-const logDir = path.join(process.cwd(), 'logs');
+const logDir = process.env.AWS_LAMBDA_FUNCTION_NAME
+  ? path.join('/tmp', 'logs')
+  : path.join(process.cwd(), 'logs');
 
 const { combine, timestamp, printf, colorize, errors } = winston.format;
 
@@ -20,6 +22,8 @@ const fileTransport = (level: string) =>
     level,
   });
 
+const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.VERCEL;
+
 export const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
   format: combine(
@@ -28,12 +32,11 @@ export const logger = winston.createLogger({
     logFormat,
   ),
   transports: [
-    fileTransport('error'),
-    fileTransport('info'),
+    ...(isLambda ? [] : [fileTransport('error'), fileTransport('info')]),
     new winston.transports.Console({
       format: combine(colorize(), timestamp({ format: 'HH:mm:ss' }), logFormat),
     }),
   ],
-  exceptionHandlers: [fileTransport('exceptions')],
-  rejectionHandlers: [fileTransport('rejections')],
+  exceptionHandlers: isLambda ? [] : [fileTransport('exceptions')],
+  rejectionHandlers: isLambda ? [] : [fileTransport('rejections')],
 });
