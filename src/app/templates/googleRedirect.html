@@ -7,7 +7,8 @@
     window.onload = function() {
       const token = '<%= accessToken %>';
       const refreshToken = '<%= refreshToken %>';
-      window.location.href = '<%= frontendUrl %>/auth/callback?accessToken=' + token + '&refreshToken=' + refreshToken;
+      const frontend = '<%= frontendUrl %>';
+      window.location.href = `${frontend}/auth/callback?accessToken=${token}&refreshToken=${refreshToken}`;
     };
   </script>
 </head>
