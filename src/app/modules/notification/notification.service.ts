@@ -10,7 +10,7 @@ import { prisma } from "../../lib/prisma";
 import { sendEmail } from "../../utils/email";
 import { getPaginationParams, getPaginationMeta } from "../../utils/helpers";
 import { logger } from "../../utils/logger";
-import { ValidationError } from "@/app/errorHelpers/ValidationError";
+import { ValidationError } from "../../errorHelpers/ValidationError";
 
 // ── Template Rendering Helper ──────────────────────────────
 
