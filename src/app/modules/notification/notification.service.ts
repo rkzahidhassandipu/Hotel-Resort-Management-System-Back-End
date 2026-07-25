@@ -1,5 +1,5 @@
 // src/modules/notification/notification.service.ts
-import { NotFoundError } from "@/app/errorHelpers/AppError";
+import { NotFoundError } from "../../errorHelpers/AppError";
 import {
   Prisma,
   NotificationType,
