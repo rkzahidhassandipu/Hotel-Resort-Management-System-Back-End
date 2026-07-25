@@ -10,7 +10,7 @@ import {
   createMenuCategorySchema,
   orderQuerySchema,
 } from "./food.validator";
-import { uploadSingle } from "@/app/config/multer.config";
+import { uploadSingle } from "../../config/multer.config";
 
 const router = Router();
 
