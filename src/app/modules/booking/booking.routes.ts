@@ -14,6 +14,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/stats', authorize('ADMIN', 'MANAGER'), validateRequest(bookingStatsQuerySchema), bookingController.getStats);
+router.get('/my', bookingController.getMyBookings);
 router.get('/', validateRequest(bookingQuerySchema), bookingController.getAllBookings);
 router.post('/', validateRequest(createBookingSchema), bookingController.createBooking);
 router.get('/:id', bookingController.getBookingById);

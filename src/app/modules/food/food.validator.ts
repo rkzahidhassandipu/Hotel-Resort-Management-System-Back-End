@@ -2,15 +2,15 @@ import { z } from 'zod';
 
 export const createOrderSchema = z.object({
   body: z.object({
-    bookingId: z.string().cuid().optional(),
     type: z.enum(['DINE_IN', 'ROOM_SERVICE', 'TAKEAWAY']).default('ROOM_SERVICE'),
     tableNumber: z.string().optional(),
-    roomNumber: z.string().optional(),
     specialNotes: z.string().max(500).optional(),
+    checkInDate: z.string().optional(),
+    checkOutDate: z.string().optional(),
     items: z
       .array(
         z.object({
-          menuItemId: z.string().cuid(),
+          menuItemId: z.string().uuid(),
           quantity: z.number().int().min(1),
           notes: z.string().optional(),
           customizations: z.record(z.unknown()).optional(),
@@ -26,23 +26,40 @@ export const updateOrderStatusSchema = z.object({
   }),
 });
 
+// food.validation.ts
+
 export const createMenuItemSchema = z.object({
   body: z.object({
-    categoryId: z.string().cuid(),
+    categoryId: z.string().uuid(),
     name: z.string().min(2).max(100),
     description: z.string().optional(),
-    price: z.number().positive(),
-    discountedPrice: z.number().positive().optional(),
+    price: z.coerce.number().positive(),                          
+    discountedPrice: z.coerce.number().positive().optional(),
     foodCategory: z
       .enum(['BREAKFAST', 'LUNCH', 'DINNER', 'SNACKS', 'BEVERAGES', 'DESSERTS', 'SPECIAL'])
       .optional(),
-    preparationTime: z.number().int().positive().optional(),
-    calories: z.number().int().positive().optional(),
-    isVegetarian: z.boolean().optional(),
-    isVegan: z.boolean().optional(),
-    isGlutenFree: z.boolean().optional(),
-    ingredients: z.array(z.string()).optional(),
-    allergens: z.array(z.string()).optional(),
+    preparationTime: z.coerce.number().int().positive().optional(),
+    calories: z.coerce.number().int().positive().optional(),
+    isVegetarian: z
+      .union([z.boolean(), z.string()])
+      .transform((v) => v === true || v === 'true')
+      .optional(),
+    isVegan: z
+      .union([z.boolean(), z.string()])
+      .transform((v) => v === true || v === 'true')
+      .optional(),
+    isGlutenFree: z
+      .union([z.boolean(), z.string()])
+      .transform((v) => v === true || v === 'true')
+      .optional(),
+    ingredients: z
+      .union([z.array(z.string()), z.string()])
+      .transform((v) => (typeof v === 'string' ? JSON.parse(v) : v))
+      .optional(),
+    allergens: z
+      .union([z.array(z.string()), z.string()])
+      .transform((v) => (typeof v === 'string' ? JSON.parse(v) : v))
+      .optional(),
   }),
 });
 
@@ -50,14 +67,26 @@ export const updateMenuItemSchema = z.object({
   body: z.object({
     name: z.string().min(2).max(100).optional(),
     description: z.string().optional(),
-    price: z.number().positive().optional(),
-    discountedPrice: z.number().positive().optional(),
-    isAvailable: z.boolean().optional(),
-    preparationTime: z.number().int().positive().optional(),
-    calories: z.number().int().positive().optional(),
-    isVegetarian: z.boolean().optional(),
-    isVegan: z.boolean().optional(),
-    isGlutenFree: z.boolean().optional(),
+    price: z.coerce.number().positive().optional(),
+    discountedPrice: z.coerce.number().positive().optional(),
+    isAvailable: z
+      .union([z.boolean(), z.string()])
+      .transform((v) => v === true || v === 'true')
+      .optional(),
+    preparationTime: z.coerce.number().int().positive().optional(),
+    calories: z.coerce.number().int().positive().optional(),
+    isVegetarian: z
+      .union([z.boolean(), z.string()])
+      .transform((v) => v === true || v === 'true')
+      .optional(),
+    isVegan: z
+      .union([z.boolean(), z.string()])
+      .transform((v) => v === true || v === 'true')
+      .optional(),
+    isGlutenFree: z
+      .union([z.boolean(), z.string()])
+      .transform((v) => v === true || v === 'true')
+      .optional(),
   }),
 });
 

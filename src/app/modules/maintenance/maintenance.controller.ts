@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { maintenanceService } from './maintenance.service';
 import { AuthenticatedRequest } from '../../interfaces';
-import { sendSuccess, sendCreated, sendNoContent } from '../../utils/helpers';
+import { sendSuccess, sendCreated } from '../../utils/helpers';
 import { UnauthorizedError } from '../../errorHelpers/AppError';
 
 const createTicket = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -56,6 +56,12 @@ const createHousekeepingLog = async (req: AuthenticatedRequest, res: Response): 
   sendCreated(res, log, 'Housekeeping log created');
 }
 
+// PENDING → IN_PROGRESS. Mirrors completeHousekeeping's shape/pattern.
+const startHousekeeping = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const log = await maintenanceService.startHousekeeping(req.params.logId);
+  sendSuccess(res, log, 'Housekeeping started');
+}
+
 const completeHousekeeping = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const log = await maintenanceService.completeHousekeeping(req.params.logId);
   sendSuccess(res, log, 'Housekeeping completed');
@@ -80,6 +86,7 @@ export const maintenanceController = {
   completeTicket,
   cancelTicket,
   createHousekeepingLog,
+  startHousekeeping,
   completeHousekeeping,
   getHousekeepingLogs,
   getStats,

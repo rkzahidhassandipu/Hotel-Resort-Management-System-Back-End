@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const createInventoryItemSchema = z.object({
   body: z.object({
-    categoryId: z.string().cuid(),
+    categoryId: z.string().uuid(),
     name: z.string().min(2).max(150),
     sku: z.string().min(1).max(50),
     unit: z.string().min(1).max(30),
@@ -49,7 +49,7 @@ export const createProcurementSchema = z.object({
     items: z
       .array(
         z.object({
-          inventoryItemId: z.string().cuid(),
+          inventoryItemId: z.string().uuid(),
           quantity: z.number().positive(),
           unitCost: z.number().positive(),
         }),

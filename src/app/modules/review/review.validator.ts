@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const createReviewSchema = z.object({
   body: z.object({
-    bookingId: z.string().cuid().optional(),
+    bookingId: z.string().uuid().optional(),
     overallRating: z.number().min(1).max(5),
     cleanlinessRating: z.number().min(1).max(5).optional(),
     serviceRating: z.number().min(1).max(5).optional(),
@@ -39,5 +39,19 @@ export const reviewQuerySchema = z.object({
     toDate: z.string().optional(),
     sortBy: z.enum(['overallRating', 'createdAt']).optional(),
     sortOrder: z.enum(['asc', 'desc']).optional(),
+  }),
+});
+
+export const updateReviewSchema = z.object({
+  body: z.object({
+    overallRating: z.number().min(1).max(5).optional(),
+    cleanlinessRating: z.number().min(1).max(5).optional(),
+    serviceRating: z.number().min(1).max(5).optional(),
+    foodRating: z.number().min(1).max(5).optional(),
+    locationRating: z.number().min(1).max(5).optional(),
+    valueRating: z.number().min(1).max(5).optional(),
+    title: z.string().max(100).optional(),
+    comment: z.string().max(1000).optional(),
+    isAnonymous: z.boolean().optional(),
   }),
 });

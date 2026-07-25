@@ -6,3 +6,5 @@ logs/
 .DS_Store
 src/app/utils/seed.ts
 src/generated/prisma/client
+.vercel
+.env*.local

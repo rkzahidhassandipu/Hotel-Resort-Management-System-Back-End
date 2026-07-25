@@ -2,15 +2,23 @@ import { z } from 'zod';
 
 export const createMaintenanceSchema = z.object({
   body: z.object({
-    roomId: z.string().cuid().optional(),
-    location: z.string().optional(),
-    type: z.enum(['ELECTRICAL', 'PLUMBING', 'HVAC', 'FURNITURE', 'APPLIANCE', 'STRUCTURAL', 'CLEANING', 'OTHER']),
-    priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
-    title: z.string().min(3).max(200),
-    description: z.string().min(5),
-    scheduledAt: z.string().datetime().optional(),
-  }),
+    title:       z.string().min(1, 'Title is required'),
+    description: z.string().min(1, 'Description is required'),
+    type:        z.enum(['ELECTRICAL', 'PLUMBING', 'HVAC', 'FURNITURE', 'CLEANING', 'SECURITY', 'OTHER']),
+    priority:    z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
+    // roomId (UUID) OR roomNumber (human-friendly) — at least one or location
+    roomId:      z.string().uuid().optional(),
+    roomNumber:  z.string().optional(),
+    location:    z.string().optional(),
+    scheduledAt: z.string().datetime({ offset: true }).optional(),
+    // reportedById comes from req.user in controller — NOT validated here
+  }).refine(
+    (d) => d.roomId || d.roomNumber || d.location,
+    { message: 'roomId, roomNumber, or location is required' }
+  ),
 });
+
+
 
 
 export const updateMaintenanceSchema = z.object({
@@ -27,7 +35,7 @@ export const updateMaintenanceSchema = z.object({
 
 export const assignMaintenanceSchema = z.object({
   body: z.object({
-    assignedToId: z.string().cuid(),
+    assignedToId: z.string().uuid(),
     scheduledAt: z.string().datetime().optional(),
   }),
 });

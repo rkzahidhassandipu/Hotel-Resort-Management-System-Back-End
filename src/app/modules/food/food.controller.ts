@@ -7,17 +7,24 @@ import { AppError, UnauthorizedError } from '../../errorHelpers/AppError';
 const createOrder = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   if (!req.user) throw new UnauthorizedError();
 
-  const { items, type } = req.body;
+  const { items, type, tableNumber, specialNotes, checkInDate, checkOutDate } = req.body;
 
   if (!items || !Array.isArray(items) || !type) {
     throw new AppError('Missing required order fields: items and type');
   }
 
-  const order = await foodService.createOrder(req.user.userId, items, type);
+  const order = await foodService.createOrder(
+    req.user.userId,
+    items,
+    type,
+    tableNumber,
+    specialNotes,
+    checkInDate,
+    checkOutDate,
+  );
 
   sendCreated(res, order, 'Order placed successfully');
 };
-
 
 const getOrders = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   if (!req.user) throw new UnauthorizedError();
@@ -47,15 +54,16 @@ const getFullMenu = async (_req: AuthenticatedRequest, res: Response): Promise<v
 }
 
 const createMenuItem = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const item = await foodService.createMenuItem(req.body);
+  console.log('FILE:', req.file);
+  console.log('BODY:', req.body);
+  const item = await foodService.createMenuItemWithImage(req.body, req.file);
   sendCreated(res, item, 'Menu item created');
-}
+};
 
 const updateMenuItem = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const item = await foodService.updateMenuItem(req.params.id, req.body);
+  const item = await foodService.updateMenuItemWithImage(req.params.id, req.body, req.file);
   sendSuccess(res, item, 'Menu item updated');
-}
-
+};
 const deleteMenuItem = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   await foodService.deleteMenuItem(req.params.id);
   sendNoContent(res);

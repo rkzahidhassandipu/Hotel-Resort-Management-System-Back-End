@@ -3,18 +3,27 @@ import { prisma } from '../../lib/prisma';
 import { NotFoundError, BadRequestError, ForbiddenError } from '../../errorHelpers/AppError';
 import { getPaginationParams, getPaginationMeta } from '../../utils/helpers';
 
-const create = async (customerId: string, data: {
+const create = async (customerId: string, role: string, data: {
   bookingId?: string; type: string; description?: string;
   scheduledAt?: string; priority?: string;
 }) => {
-  if (data.bookingId) {
-    const booking = await prisma.booking.findFirst({
-      where: { id: data.bookingId, customerId, status: { in: ['CONFIRMED', 'CHECKED_IN'] } },
-    });
-    if (!booking) throw new BadRequestError('Invalid booking or booking not active');
-  }
 
-  
+  if (data.bookingId) {
+  const where: any = {
+    OR: [
+      { id: data.bookingId },
+      { bookingNumber: data.bookingId }, 
+    ],
+    status: { in: ['CONFIRMED', 'CHECKED_IN'] },
+  };
+  if (role === 'CUSTOMER') where.customerId = customerId;
+
+  const booking = await prisma.booking.findFirst({ where });
+  if (!booking) throw new BadRequestError('Invalid booking or booking not active');
+
+  data.bookingId = booking.id;
+}
+
   return prisma.serviceRequest.create({
     data: {
       customerId,
@@ -29,7 +38,7 @@ const create = async (customerId: string, data: {
       booking: { select: { bookingNumber: true, room: { select: { roomNumber: true } } } },
     },
   });
-}
+};
 
 const getAll = async (query: {
   page?: string; limit?: string; status?: string;
@@ -58,7 +67,7 @@ const getAll = async (query: {
   ]);
 
   return { requests, meta: getPaginationMeta(total, page, limit) };
-}
+};
 
 const getById = async (id: string, role: string, userId: string) => {
   const request = await prisma.serviceRequest.findUnique({
@@ -71,7 +80,7 @@ const getById = async (id: string, role: string, userId: string) => {
   if (!request) throw new NotFoundError('Service request not found');
   if (role === 'CUSTOMER' && request.customerId !== userId) throw new ForbiddenError('Access denied');
   return request;
-}
+};
 
 const assign = async (id: string, assignedToId: string) => {
   const request = await prisma.serviceRequest.findUnique({ where: { id } });
@@ -87,7 +96,7 @@ const assign = async (id: string, assignedToId: string) => {
     where: { id },
     data: { assignedToId, status: 'ASSIGNED' },
   });
-}
+};
 
 const updateStatus = async (id: string, status: string, notes?: string, cost?: number) => {
   const request = await prisma.serviceRequest.findUnique({ where: { id } });
@@ -98,7 +107,7 @@ const updateStatus = async (id: string, status: string, notes?: string, cost?: n
   if (status === 'COMPLETED') data.completedAt = new Date();
 
   return prisma.serviceRequest.update({ where: { id }, data: data as any });
-}
+};
 
 const cancel = async (id: string, userId: string, role: string) => {
   const request = await prisma.serviceRequest.findUnique({ where: { id } });
@@ -107,7 +116,7 @@ const cancel = async (id: string, userId: string, role: string) => {
   if (request.status === 'COMPLETED') throw new BadRequestError('Cannot cancel a completed request');
 
   return prisma.serviceRequest.update({ where: { id }, data: { status: 'CANCELLED' } });
-}
+};
 
 const getStats = async () => {
   const [byStatus, byType, pendingCount] = await Promise.all([
@@ -116,7 +125,7 @@ const getStats = async () => {
     prisma.serviceRequest.count({ where: { status: 'PENDING' } }),
   ]);
   return { byStatus, byType, pendingCount };
-}
+};
 
 export const serviceRequestService = {
   create,

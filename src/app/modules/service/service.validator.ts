@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const createServiceRequestSchema = z.object({
   body: z.object({
-    bookingId: z.string().cuid().optional(),
+    bookingId: z.string().uuid().optional(),
     type: z.enum([
       'LAUNDRY', 'ROOM_SERVICE', 'EXTRA_TOWELS', 'EXTRA_PILLOW',
       'WAKE_UP_CALL', 'TAXI_BOOKING', 'TOUR_BOOKING', 'SPA_BOOKING',
@@ -17,7 +17,7 @@ export const createServiceRequestSchema = z.object({
 export const updateServiceRequestSchema = z.object({
   body: z.object({
     status: z.enum(['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
-    assignedToId: z.string().cuid().optional(),
+    assignedToId: z.string().uuid().optional(),
     notes: z.string().optional(),
     cost: z.number().positive().optional(),
   }),

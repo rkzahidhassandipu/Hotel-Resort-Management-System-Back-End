@@ -10,8 +10,11 @@ import { requestLogger } from './app/middlewares/logger.middleware';
 import { globalRateLimiter } from './app/middlewares/rateLimit.middleware';
 import { globalErrorHandler, notFoundHandler } from './app/middlewares/globalErrorHandler.middleware';
 import router from './app/routes';
+import { paymentController } from './app/modules/payment/payment.controller';
 
 const app = express();
+
+app.set('trust proxy', 1);
 
 // ── Security ──────────────────────────────────────────────
 app.use(helmet());
@@ -22,6 +25,13 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
+// ── Stripe Webhook (raw body — MUST be before express.json) ──
+app.post(
+  `${config.apiPrefix}/payments/webhook/stripe`,
+  express.raw({ type: 'application/json' }),
+  paymentController.stripeWebhook,
+);
+
 // ── General Middleware ────────────────────────────────────
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
@@ -31,12 +41,8 @@ app.use(requestLogger);
 app.use(globalRateLimiter);
 
 // ── Health Check ──────────────────────────────────────────
-
 app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Hotel Management API running'
-  });
+  res.json({ success: true, message: 'Hotel Management API running' });
 });
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' });

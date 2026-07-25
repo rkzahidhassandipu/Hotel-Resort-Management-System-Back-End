@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const createShiftSchema = z.object({
   body: z.object({
-    staffProfileId: z.string().cuid(),
+    staffProfileId: z.string().uuid(),
     type: z.enum(['MORNING', 'AFTERNOON', 'EVENING', 'NIGHT', 'FLEXIBLE']),
     date: z.string().datetime(),
     startTime: z.string().datetime(),
@@ -25,7 +25,7 @@ export const createTaskSchema = z.object({
   body: z.object({
     title: z.string().min(3).max(200),
     description: z.string().optional(),
-    assignedToId: z.string().cuid(),
+    assignedToId: z.string().uuid(),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
     dueDate: z.string().datetime().optional(),
   }),
@@ -35,17 +35,20 @@ export const updateTaskStatusSchema = z.object({
   body: z.object({
     status: z.enum(['IN_PROGRESS', 'COMPLETED', 'CANCELLED']),
     notes: z.string().optional(),
+    // Completion review fields — only relevant when status = COMPLETED
+    reviewRating: z.number().min(1).max(5).optional(),
+    reviewNote: z.string().optional(),
   }),
 });
 
 export const createPerformanceReviewSchema = z.object({
   body: z.object({
-    period: z.string().min(1),
-    rating: z.number().min(1).max(5),
-    punctuality: z.number().min(1).max(5).optional(),
-    productivity: z.number().min(1).max(5).optional(),
-    attitude: z.number().min(1).max(5).optional(),
-    teamwork: z.number().min(1).max(5).optional(),
+    period: z.string().min(1, "Period is required"), // e.g. "Q1 2025"
+    rating: z.number().min(0).max(5),
+    punctuality: z.number().min(0).max(5).optional(),
+    productivity: z.number().min(0).max(5).optional(),
+    attitude: z.number().min(0).max(5).optional(),
+    teamwork: z.number().min(0).max(5).optional(),
     comments: z.string().optional(),
     goals: z.string().optional(),
   }),

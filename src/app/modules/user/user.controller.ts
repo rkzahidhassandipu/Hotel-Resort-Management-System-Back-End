@@ -4,6 +4,7 @@ import { userService } from './user.service';
 import { sendSuccess, sendCreated, sendNoContent } from '../../utils/helpers';
 import { UnauthorizedError, BadRequestError } from '../../errorHelpers/AppError';
 import { Role, UserStatus } from '../../../generated/prisma/client';
+import { prisma } from '../../lib/prisma';
 
 const getMe = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   if (!req.user) throw new UnauthorizedError();
@@ -11,11 +12,23 @@ const getMe = async (req: AuthenticatedRequest, res: Response): Promise<void> =>
   sendSuccess(res, user, 'Profile retrieved');
 }
 
-const updateProfile = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  if (!req.user) throw new UnauthorizedError();
-  const user = await userService.updateProfile(req.user.userId, req.body);
-  sendSuccess(res, user, 'Profile updated');
-}
+const updateProfile = async (userId: string, data: any) => {
+  const updateData: any = { ...data };
+
+  if ("dateOfBirth" in updateData) {
+    if (!updateData.dateOfBirth) {
+      updateData.dateOfBirth = null;
+    } else {
+      const date = new Date(updateData.dateOfBirth);
+      updateData.dateOfBirth = isNaN(date.getTime()) ? null : date;
+    }
+  }
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: updateData,
+  });
+};
 
 const uploadAvatar = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   if (!req.user) throw new UnauthorizedError();

@@ -6,9 +6,9 @@ import { UnauthorizedError } from '../../errorHelpers/AppError';
 
 const create = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   if (!req.user) throw new UnauthorizedError();
-  const sr = await serviceRequestService.create(req.user.userId, req.body);
+  const sr = await serviceRequestService.create(req.user.userId, req.user.role, req.body);
   sendCreated(res, sr, 'Service request created');
-}
+};
 
 const getAll = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   if (!req.user) throw new UnauthorizedError();

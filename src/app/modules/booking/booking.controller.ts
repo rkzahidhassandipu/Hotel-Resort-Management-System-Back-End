@@ -17,6 +17,16 @@ const createBooking = async (req: AuthenticatedRequest, res: Response): Promise<
   sendCreated(res, booking, 'Booking created successfully');
 }
 
+
+const getMyBookings = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  if (!req.user) throw new UnauthorizedError();
+  console.log('customerId:', req.user.userId); 
+  const bookings = await bookingService.getMyBookings(req.user.userId);
+  console.log('bookings with hasReview:', bookings.map(b => ({ id: b.id, hasReview: b.hasReview }))); // ← যোগ করো
+  sendSuccess(res, bookings, 'My bookings retrieved');
+};
+
+
 const getAllBookings = async (req: AuthenticatedRequest, res: Response): Promise<void> =>{
   if (!req.user) throw new UnauthorizedError();
   const result = await bookingService.getAllBookings(
@@ -80,4 +90,5 @@ export const bookingController = {
   checkOut,
   cancelBooking,
   getStats,
+  getMyBookings,
 };

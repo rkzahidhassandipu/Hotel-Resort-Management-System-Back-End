@@ -3,7 +3,7 @@ import { z } from 'zod';
 // ── Create Notification ───────────────────────────────────
 export const createNotificationSchema = z.object({
   body: z.object({
-    userId: z.string().cuid(),
+    userId: z.string().uuid(),
     type: z.enum([
       'BOOKING_CONFIRMATION', 'BOOKING_CANCELLATION',
       'CHECK_IN_REMINDER', 'CHECK_OUT_REMINDER',
@@ -22,7 +22,7 @@ export const createNotificationSchema = z.object({
 export const broadcastNotificationSchema = z.object({
   body: z.object({
     roles: z.array(z.enum(['ADMIN', 'MANAGER', 'STAFF', 'CUSTOMER', 'MAINTENANCE', 'CHEF'])).optional(),
-    userIds: z.array(z.string().cuid()).optional(),
+    userIds: z.array(z.string().uuid()).optional(),
     type: z.enum([
       'BOOKING_CONFIRMATION', 'BOOKING_CANCELLATION',
       'CHECK_IN_REMINDER', 'CHECK_OUT_REMINDER',

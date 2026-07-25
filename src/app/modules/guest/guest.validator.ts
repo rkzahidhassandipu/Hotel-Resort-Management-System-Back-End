@@ -37,7 +37,7 @@ export const resolveInquirySchema = z.object({
 
 export const convertVisitorSchema = z.object({
   body: z.object({
-    visitorId: z.string().cuid(),
+    visitorId: z.string().uuid(),
   }),
 });
 

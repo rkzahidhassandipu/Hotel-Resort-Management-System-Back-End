@@ -27,42 +27,53 @@ const createPayment = async (
 
   // ── ONLINE PAYMENT via Stripe ──────────────────────────
   if (data.method === 'ONLINE_PAYMENT') {
-    // Convert amount to smallest currency unit (paisa / cent)
-    const amountInSmallestUnit = Math.round(data.amount * 100);
+  const amountInSmallestUnit = Math.round(data.amount * 100);
 
-    // Create a Stripe PaymentIntent
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountInSmallestUnit,
-      currency,
-      metadata: {
-        userId,
-        bookingId: data.bookingId ?? '',
-        notes: data.notes ?? '',
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    mode: 'payment',
+    line_items: [
+      {
+        price_data: {
+          currency: currency,
+          unit_amount: amountInSmallestUnit,
+          product_data: {
+            name: 'Hotel Booking Payment',
+            description: data.bookingId ? `Booking ID: ${data.bookingId}` : 'Hotel Service',
+          },
+        },
+        quantity: 1,
       },
-      automatic_payment_methods: { enabled: true },
-    });
+    ],
+    metadata: {
+      userId,
+      bookingId: data.bookingId ?? '',
+      notes: data.notes ?? '',
+    },
+    success_url: `${process.env.FRONTEND_URL}/book/success?bookingId=${data.bookingId}&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${process.env.FRONTEND_URL}/book/confirm?bookingId=${data.bookingId}`,
+  });
 
-    // Create a PENDING payment record
-    const payment = await prisma.payment.create({
-      data: {
-        ...data,
-        userId,
-        status: 'PENDING',
-        method: data.method as any,
-        transactionId: paymentIntent.id,
-      },
-      include: {
-        booking: { select: { bookingNumber: true, totalAmount: true } },
-        user: { select: { firstName: true, lastName: true, email: true } },
-      },
-    });
+  const payment = await prisma.payment.create({
+    data: {
+      ...data,
+      userId,
+      status: 'PENDING',
+      method: data.method as any,
+      transactionId: session.id, // store session ID
+    },
+    include: {
+      booking: { select: { bookingNumber: true, totalAmount: true } },
+      user: { select: { firstName: true, lastName: true, email: true } },
+    },
+  });
 
-    return {
-      payment,
-      clientSecret: paymentIntent.client_secret,
-      paymentIntentId: paymentIntent.id,
-    };
-  }
+  return {
+    payment,
+    sessionId: session.id,
+    url: session.url
+  };
+}
 
   // ── CASH / CARD / BANK / MOBILE ───────────────────────
   const payment = await prisma.payment.create({
@@ -153,21 +164,26 @@ const handleStripeWebhook = async (rawBody: Buffer, signature: string, webhookSe
   }
 
   switch (event.type) {
-    case 'payment_intent.succeeded': {
-      const pi = event.data.object;
-      await prisma.payment.updateMany({
-        where: { transactionId: pi.id, status: 'PENDING' },
+    case 'checkout.session.completed': {
+      const session = event.data.object;
+      const result = await prisma.payment.updateMany({
+        where: { transactionId: session.id, status: 'PENDING' },
         data: { status: 'COMPLETED', paidAt: new Date() },
       });
-      logger.info(`Stripe webhook: payment_intent.succeeded for ${pi.id}`);
+      logger.info(`Stripe webhook: checkout.session.completed for ${session.id}, updated ${result.count} payment(s)`);
+      break;
+    }
+    case 'checkout.session.expired': {
+      const session = event.data.object;
+      await prisma.payment.updateMany({
+        where: { transactionId: session.id, status: 'PENDING' },
+        data: { status: 'FAILED' },
+      });
+      logger.info(`Stripe webhook: checkout.session.expired for ${session.id}`);
       break;
     }
     case 'payment_intent.payment_failed': {
       const pi = event.data.object;
-      await prisma.payment.updateMany({
-        where: { transactionId: pi.id, status: 'PENDING' },
-        data: { status: 'FAILED' },
-      });
       logger.info(`Stripe webhook: payment_intent.payment_failed for ${pi.id}`);
       break;
     }

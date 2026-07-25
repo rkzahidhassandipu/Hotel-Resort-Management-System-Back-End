@@ -3,20 +3,40 @@ import { prisma } from '../../lib/prisma';
 import { NotFoundError, BadRequestError } from '../../errorHelpers/AppError';
 import { getPaginationParams, getPaginationMeta } from '../../utils/helpers';
 
-  // ── Create Ticket ─────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────
+
+const generateTicketNumber = async () => {
+  const year = new Date().getFullYear();
+  const count = await prisma.maintenanceLog.count({
+    where: { createdAt: { gte: new Date(`${year}-01-01`) } },
+  });
+  return `MT-${year}-${String(count + 1).padStart(4, '0')}`;
+};
+
+// ── Create Ticket — replace the existing createTicket function ─────────────────────────────────────────
 
 const createTicket = async (data: {
-  roomId?: string; location?: string; type: string; priority?: string;
+  roomId?: string; roomNumber?: string; location?: string; type: string; priority?: string;
   title: string; description: string; reportedById: string; scheduledAt?: string;
 }) => {
-  if (data.roomId) {
-    const room = await prisma.room.findUnique({ where: { id: data.roomId } });
+  let roomId = data.roomId;
+
+  // Resolve roomNumber → roomId (same pattern as createHousekeepingLog)
+  if (!roomId && data.roomNumber) {
+    const room = await prisma.room.findUnique({ where: { roomNumber: data.roomNumber } });
+    if (!room) throw new NotFoundError(`Room ${data.roomNumber} not found`);
+    roomId = room.id;
+  } else if (roomId) {
+    const room = await prisma.room.findUnique({ where: { id: roomId } });
     if (!room) throw new NotFoundError('Room not found');
   }
 
+  const ticketNumber = await generateTicketNumber();
+
   const ticket = await prisma.maintenanceLog.create({
     data: {
-      roomId: data.roomId,
+      ticketNumber,
+      roomId,
       location: data.location,
       type: data.type as any,
       priority: (data.priority as any) || 'MEDIUM',
@@ -31,16 +51,17 @@ const createTicket = async (data: {
     },
   });
 
-  // If room reported, update room status to MAINTENANCE
-  if (data.roomId) {
+  if (roomId) {
     await prisma.room.update({
-      where: { id: data.roomId },
+      where: { id: roomId },
       data: { status: 'MAINTENANCE' },
     });
   }
 
   return ticket;
-}
+};
+
+
 
 const getAllTickets = async (query: {
   page?: string; limit?: string; status?: string; priority?: string;
@@ -76,7 +97,7 @@ const getAllTickets = async (query: {
   ]);
 
   return { tickets, meta: getPaginationMeta(total, page, limit) };
-}
+};
 
 const getTicketById = async (id: string) => {
   const ticket = await prisma.maintenanceLog.findUnique({
@@ -90,7 +111,7 @@ const getTicketById = async (id: string) => {
   });
   if (!ticket) throw new NotFoundError('Maintenance ticket not found');
   return ticket;
-}
+};
 
 const updateTicket = async (id: string, data: {
   type?: string; priority?: string; status?: string;
@@ -113,7 +134,7 @@ const updateTicket = async (id: string, data: {
       assignedTo: { select: { firstName: true, lastName: true } },
     },
   });
-}
+};
 
 const assignTicket = async (id: string, assignedToId: string, scheduledAt?: string) => {
   const ticket = await prisma.maintenanceLog.findUnique({ where: { id } });
@@ -122,7 +143,6 @@ const assignTicket = async (id: string, assignedToId: string, scheduledAt?: stri
     throw new BadRequestError(`Cannot assign a ${ticket.status} ticket`);
   }
 
-  // Verify the assignee exists and has maintenance/staff role
   const user = await prisma.user.findUnique({ where: { id: assignedToId } });
   if (!user) throw new NotFoundError('Assigned user not found');
   if (!['MAINTENANCE', 'STAFF', 'MANAGER', 'ADMIN'].includes(user.role)) {
@@ -142,7 +162,7 @@ const assignTicket = async (id: string, assignedToId: string, scheduledAt?: stri
       room: { select: { roomNumber: true } },
     },
   });
-}
+};
 
 const completeTicket = async (id: string, data: {
   actualHours: number; cost?: number; notes?: string;
@@ -154,7 +174,6 @@ const completeTicket = async (id: string, data: {
   if (ticket.status === 'CANCELLED') throw new BadRequestError('Cannot complete a cancelled ticket');
 
   return prisma.$transaction(async (tx) => {
-    // Add parts if any
     if (data.parts?.length) {
       await tx.maintenancePart.createMany({
         data: data.parts.map((p) => ({ maintenanceId: id, ...p })),
@@ -173,7 +192,6 @@ const completeTicket = async (id: string, data: {
       include: { parts: true, room: { select: { roomNumber: true } } },
     });
 
-    // Free up the room — set back to AVAILABLE
     if (ticket.roomId) {
       await tx.room.update({
         where: { id: ticket.roomId },
@@ -183,7 +201,7 @@ const completeTicket = async (id: string, data: {
 
     return updated;
   });
-}
+};
 
 const cancelTicket = async (id: string, reason?: string) => {
   const ticket = await prisma.maintenanceLog.findUnique({ where: { id } });
@@ -195,7 +213,6 @@ const cancelTicket = async (id: string, reason?: string) => {
     data: { status: 'CANCELLED', notes: reason },
   });
 
-  // Free room if it was in maintenance
   if (ticket.roomId) {
     await prisma.room.update({
       where: { id: ticket.roomId },
@@ -204,29 +221,55 @@ const cancelTicket = async (id: string, reason?: string) => {
   }
 
   return updated;
-}
+};
 
+// ── Housekeeping ─────────────────────────────────────────
+//
+// Accepts a human-friendly roomNumber (e.g. "204") instead of the internal
+// roomId (UUID/CUID). roomNumber is @unique on the Room model, so a single
+// findUnique resolves it to the actual room before creating the log.
 const createHousekeepingLog = async (data: {
-  roomId: string; staffId?: string; status: string; type: string;
+  roomNumber: string; staffId?: string; status: string; type: string;
   notes?: string; checklist?: Record<string, boolean>;
 }) => {
-  const room = await prisma.room.findUnique({ where: { id: data.roomId } });
-  if (!room) throw new NotFoundError('Room not found');
+  const room = await prisma.room.findUnique({ where: { roomNumber: data.roomNumber } });
+  if (!room) throw new NotFoundError(`Room ${data.roomNumber} not found`);
+
+  const { roomNumber, ...rest } = data;
 
   const log = await prisma.housekeepingLog.create({
     data: {
-      ...data,
+      ...rest,
+      roomId: room.id,
       startedAt: new Date(),
       checklist: data.checklist as any,
     },
-    include: { room: { select: { roomNumber: true, floor: true } } },
+    include: {
+      room: { select: { roomNumber: true, floor: true } },
+      staff: { select: { firstName: true, lastName: true } },
+    },
   });
 
-  // Update room status to CLEANING
-  await prisma.room.update({ where: { id: data.roomId }, data: { status: 'CLEANING' } });
+  await prisma.room.update({ where: { id: room.id }, data: { status: 'CLEANING' } });
 
   return log;
-}
+};
+
+const startHousekeeping = async (logId: string) => {
+  const log = await prisma.housekeepingLog.findUnique({ where: { id: logId } });
+  if (!log) throw new NotFoundError('Housekeeping log not found');
+  if (log.status === 'COMPLETED') throw new BadRequestError('Log already completed');
+  if (log.status === 'IN_PROGRESS') throw new BadRequestError('Log already in progress');
+
+  return prisma.housekeepingLog.update({
+    where: { id: logId },
+    data: { status: 'IN_PROGRESS', startedAt: new Date() },
+    include: {
+      room: { select: { roomNumber: true, floor: true } },
+      staff: { select: { firstName: true, lastName: true } },
+    },
+  });
+};
 
 const completeHousekeeping = async (logId: string) => {
   const log = await prisma.housekeepingLog.findUnique({ where: { id: logId } });
@@ -237,11 +280,10 @@ const completeHousekeeping = async (logId: string) => {
     data: { completedAt: new Date(), status: 'COMPLETED' },
   });
 
-  // Set room back to AVAILABLE
   await prisma.room.update({ where: { id: log.roomId }, data: { status: 'AVAILABLE' } });
 
   return updated;
-}
+};
 
 const getHousekeepingLogs = async (query: { page?: string; limit?: string; roomId?: string }) => {
   const { page, limit, skip } = getPaginationParams(query);
@@ -261,10 +303,20 @@ const getHousekeepingLogs = async (query: { page?: string; limit?: string; roomI
     prisma.housekeepingLog.count({ where }),
   ]);
   return { logs, meta: getPaginationMeta(total, page, limit) };
-}
+};
 
+// Returns FLAT keys the frontend StatsCards consume directly — no parsing needed
 const getStats = async () => {
-  const [byStatus, byPriority, byType, overduePending] = await Promise.all([
+  // TEMP DEBUG — remove after diagnosing the all-zero stats issue
+  const rawCount = await prisma.maintenanceLog.count();
+  console.log('[getStats] total rows in maintenance_logs:', rawCount);
+  const sample = await prisma.maintenanceLog.findMany({
+    take: 3,
+    select: { id: true, ticketNumber: true, status: true, createdAt: true },
+  });
+  console.log('[getStats] sample rows:', JSON.stringify(sample, null, 2));
+ 
+  const [byStatusRaw, byPriorityRaw, byTypeRaw, overduePending] = await Promise.all([
     prisma.maintenanceLog.groupBy({ by: ['status'], _count: { status: true } }),
     prisma.maintenanceLog.groupBy({
       by: ['priority'], _count: { priority: true },
@@ -278,9 +330,27 @@ const getStats = async () => {
       },
     }),
   ]);
-
-  return { byStatus, byPriority, byType, overduePending };
-}
+ 
+  console.log('[getStats] byStatusRaw:', byStatusRaw);
+ 
+  const byStatus = Object.fromEntries(byStatusRaw.map((s) => [s.status, s._count.status]));
+  const byPriority = Object.fromEntries(byPriorityRaw.map((p) => [p.priority, p._count.priority]));
+  const byType = Object.fromEntries(byTypeRaw.map((t) => [t.type, t._count.type]));
+ 
+  const total = byStatusRaw.reduce((sum, s) => sum + s._count.status, 0);
+ 
+  return {
+    total,
+    pending: byStatus.PENDING || 0,
+    inProgress: byStatus.IN_PROGRESS || 0,
+    completed: byStatus.COMPLETED || 0,
+    cancelled: byStatus.CANCELLED || 0,
+    byStatus,
+    byPriority,
+    byType,
+    overduePending,
+  };
+};
 
 export const maintenanceService = {
   createTicket,
@@ -291,6 +361,7 @@ export const maintenanceService = {
   completeTicket,
   cancelTicket,
   createHousekeepingLog,
+  startHousekeeping,
   completeHousekeeping,
   getHousekeepingLogs,
   getStats,

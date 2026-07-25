@@ -51,24 +51,29 @@ const updateTaskStatus = async (req: AuthenticatedRequest, res: Response): Promi
     req.user.userId,
     req.user.role,
     req.body.notes,
+    req.body.reviewRating,
+    req.body.reviewNote,
   );
   sendSuccess(res, task, 'Task status updated');
-}
+};
 
 const addPerformanceReview = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   if (!req.user) throw new UnauthorizedError();
   const review = await staffService.addPerformanceReview(
     req.params.profileId,
     req.user.userId,
-    req.body,
+    req.body
   );
-  sendCreated(res, review, 'Performance review added');
-}
+  sendCreated(res, review, "Performance review added");
+};
 
 const getPerformanceReviews = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const reviews = await staffService.getPerformanceReviews(req.params.profileId);
-  sendSuccess(res, reviews, 'Performance reviews retrieved');
-}
+  const result = await staffService.getPerformanceReviews(
+    req.params.profileId,
+    req.query
+  );
+  sendSuccess(res, result.reviews, "Reviews retrieved", 200, result.meta);
+};
 
 
 const getStaffStats = async (_req: AuthenticatedRequest, res: Response): Promise<void> => {

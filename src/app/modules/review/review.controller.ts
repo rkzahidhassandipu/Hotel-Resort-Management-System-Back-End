@@ -58,6 +58,12 @@ const getStats = async (_req: AuthenticatedRequest, res: Response): Promise<void
   sendSuccess(res, stats, 'Review stats retrieved');
 }
 
+const update = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  if (!req.user) throw new UnauthorizedError();
+  const review = await reviewService.update(req.params.id, req.user.userId, req.body);
+  sendSuccess(res, review, 'Review updated successfully');
+}
+
 export const reviewController = {
   create,
   getAll,
@@ -67,4 +73,5 @@ export const reviewController = {
   respond,
   deleteReview,
   getStats,
+  update,
 };

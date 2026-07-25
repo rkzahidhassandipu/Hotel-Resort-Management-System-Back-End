@@ -157,11 +157,21 @@ const getMyTasks = async (userId: string) => {
   });
 }
 
-const updateTaskStatus = async (taskId: string, status: string, userId: string, role: string, notes?: string) => {
-  const task = await prisma.staffTask.findUnique({ where: { id: taskId } });
+const updateTaskStatus = async (
+  taskId: string,
+  status: string,
+  userId: string,
+  role: string,
+  notes?: string,
+  reviewRating?: number,
+  reviewNote?: string,
+) => {
+  const task = await prisma.staffTask.findUnique({
+    where: { id: taskId },
+    include: { assignedTo: { include: { staffProfile: true } } },
+  });
   if (!task) throw new NotFoundError('Task not found');
 
-  // Only assignee or admin/manager can update
   if (task.assignedToId !== userId && !['ADMIN', 'MANAGER'].includes(role)) {
     throw new ForbiddenError('You can only update tasks assigned to you');
   }
@@ -170,23 +180,52 @@ const updateTaskStatus = async (taskId: string, status: string, userId: string, 
   if (status === 'IN_PROGRESS') data.startedAt = new Date();
   if (status === 'COMPLETED') data.completedAt = new Date();
 
-  return prisma.staffTask.update({
+  const updatedTask = await prisma.staffTask.update({
     where: { id: taskId },
     data: data as any,
     include: { assignedTo: { select: { firstName: true, lastName: true } } },
   });
-}
+
+  // Auto-create performance review snapshot on completion
+  if (status === 'COMPLETED' && reviewRating !== undefined) {
+    const profileId = task.assignedTo?.staffProfile?.id;
+    if (profileId) {
+      await prisma.performanceReview.create({
+        data: {
+          staffProfileId: profileId,
+          reviewedById: userId,
+          period: `Task: ${task.title}`,
+          rating: reviewRating,
+          ...(reviewNote && { comments: reviewNote }),
+        },
+      });
+    }
+  }
+
+  return updatedTask;
+};
 
 
-const getPerformanceReviews = async (staffProfileId: string) => {
-  const profile = await prisma.staffProfile.findUnique({ where: { id: staffProfileId } });
-  if (!profile) throw new NotFoundError('Staff profile not found');
+const getPerformanceReviews = async (staffProfileId: string, query: any) => {
+  const { page, limit, skip } = getPaginationParams(query);
 
-  return prisma.performanceReview.findMany({
-    where: { staffProfileId },
-    orderBy: { reviewedAt: 'desc' },
-  });
-}
+  const [reviews, total] = await Promise.all([
+    prisma.performanceReview.findMany({
+      where: { staffProfileId },
+      skip,
+      take: limit,
+      orderBy: { reviewedAt: "desc" },
+      include: {
+        reviewedBy: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+      },
+    }),
+    prisma.performanceReview.count({ where: { staffProfileId } }),
+  ]);
+
+  return { reviews, meta: getPaginationMeta(total, page, limit) };
+};
 
 const getStaffStats = async () => {
   const today = new Date();
@@ -206,7 +245,7 @@ const getStaffStats = async () => {
 
 const addPerformanceReview = async (
   staffProfileId: string,
-  reviewedById: string,
+  reviewerId: string,
   data: {
     period: string;
     rating: number;
@@ -218,38 +257,33 @@ const addPerformanceReview = async (
     goals?: string;
   }
 ) => {
-  // Ensure staff profile exists
-  const staffProfile = await prisma.staffProfile.findUnique({ where: { id: staffProfileId } });
-  if (!staffProfile) throw new NotFoundError('Staff profile not found');
-
-  // Validate rating range (example: 0–5)
-  if (data.rating < 0 || data.rating > 5) {
-    throw new BadRequestError('Rating must be between 0 and 5');
-  }
+  const profile = await prisma.staffProfile.findUnique({
+    where: { id: staffProfileId },
+  });
+  if (!profile) throw new NotFoundError("Staff profile not found");
 
   return prisma.performanceReview.create({
     data: {
       staffProfileId,
-      reviewedById,
+      reviewedById: reviewerId,
       period: data.period,
       rating: data.rating,
-      punctuality: data.punctuality,
-      productivity: data.productivity,
-      attitude: data.attitude,
-      teamwork: data.teamwork,
-      comments: data.comments,
-      goals: data.goals,
-      reviewedAt: new Date(),
+      ...(data.punctuality !== undefined && { punctuality: data.punctuality }),
+      ...(data.productivity !== undefined && { productivity: data.productivity }),
+      ...(data.attitude !== undefined && { attitude: data.attitude }),
+      ...(data.teamwork !== undefined && { teamwork: data.teamwork }),
+      ...(data.comments && { comments: data.comments }),
+      ...(data.goals && { goals: data.goals }),
     },
     include: {
-      staffProfile: {
-        include: {
-          user: { select: { firstName: true, lastName: true, email: true } },
-        },
+      reviewedBy: {
+        select: { id: true, firstName: true, lastName: true },
       },
     },
   });
 }; 
+
+
 export const staffService = {
   createShift,
   getShifts,

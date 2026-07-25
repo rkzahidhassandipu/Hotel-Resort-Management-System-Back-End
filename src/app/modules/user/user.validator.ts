@@ -40,8 +40,9 @@ export const createStaffSchema = z.object({
     firstName: z.string().min(2).max(50),
     lastName: z.string().min(2).max(50),
     email: z.string().email(),
+    password: z.string().min(8),
     phone: z.string().min(10).max(20).optional(),
-    role: z.enum(['STAFF', 'MAINTENANCE', 'CHEF']),
+    role: z.enum(['STAFF', 'MAINTENANCE', 'CHEF', 'MANAGER']),
     department: z.string().min(1),
     designation: z.string().min(1),
     joiningDate: z.string().datetime(),
@@ -54,11 +55,11 @@ export const createStaffSchema = z.object({
 
 // Admin approve/reject schema
 export const approveAccountSchema = z.object({
-  params: z.object({ id: z.string().cuid() }),
+  params: z.object({ id: z.string().uuid() }),
 });
 
 export const rejectAccountSchema = z.object({
-  params: z.object({ id: z.string().cuid() }),
+  params: z.object({ id: z.string().uuid() }),
   body: z.object({
     reason: z.string().min(5).max(500),
   }),

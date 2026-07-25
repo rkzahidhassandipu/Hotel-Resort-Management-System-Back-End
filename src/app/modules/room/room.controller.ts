@@ -34,12 +34,21 @@ const checkAvailability = async (req: AuthenticatedRequest, res: Response): Prom
   sendSuccess(res, rooms, 'Available rooms retrieved');
 }
 
-const uploadImages = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const files = req.files as Express.Multer.File[];
-  if (!files?.length) throw new BadRequestError('No images provided');
-  const room = await roomService.uploadRoomImages(req.params.id, files);
-  sendSuccess(res, room, 'Images uploaded');
-}
+const uploadImages = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    console.log("FILES:", req.files);
+
+    const files = req.files as Express.Multer.File[];
+    if (!files?.length) throw new BadRequestError("No images provided");
+
+    const room = await roomService.uploadRoomImages(req.params.id, files);
+
+    sendSuccess(res, room, "Images uploaded");
+  } catch (err) {
+    console.error("UPLOAD ERROR:", err);
+    throw err;
+  }
+};
 
 const deleteImage = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   await roomService.deleteRoomImage(req.params.id, req.params.imageId);
@@ -96,6 +105,21 @@ const createAmenity = async (req: AuthenticatedRequest, res: Response): Promise<
   sendCreated(res, amenity, 'Amenity created');
 }
 
+const updateAmenity = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const amenity = await roomService.updateAmenity(req.params.amenityId, req.body);
+  sendSuccess(res, amenity, 'Amenity updated');
+};
+ 
+const deleteAmenity = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  await roomService.deleteAmenity(req.params.amenityId);
+  sendNoContent(res);
+};
+
+const getPricingRules = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const rules = await roomService.getPricingRules(req.params.id);
+  sendSuccess(res, rules, 'Pricing rules retrieved');
+}
+
 export const roomController = {
   createRoom,
   getAllRooms,
@@ -115,4 +139,7 @@ export const roomController = {
   getRoomStats,
   getAllAmenities,
   createAmenity,
+  updateAmenity,
+  deleteAmenity,
+  getPricingRules
 };

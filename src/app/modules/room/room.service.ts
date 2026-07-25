@@ -1,8 +1,9 @@
-import { Prisma, RoomStatus, RoomType } from '../../../generated/prisma/client';
+import { BedType, Prisma, RoomStatus, RoomType } from '../../../generated/prisma/client';
 import { prisma } from '../../lib/prisma';
 import { uploadToCloudinary, deleteFromCloudinary } from '../../utils/cloudinary';
 import { NotFoundError, ConflictError, BadRequestError } from '../../errorHelpers/AppError';
 import { getPaginationParams, getPaginationMeta } from '../../utils/helpers';
+
 
 const ROOM_SELECT = {
   id: true, roomNumber: true, floor: true, type: true, status: true,
@@ -20,7 +21,8 @@ const createRoom = async (data: {
   roomNumber: string; floor: number; type: string; bedType: string;
   maxOccupancy: number; sizeInSqFt?: number; categoryId: string;
   description?: string; view?: string; smokingAllowed?: boolean;
-  petFriendly?: boolean; notes?: string;
+  petFriendly?: boolean; notes?: string; status?: string; isActive?: boolean;
+  amenityIds?: string[];
 }) => {
   const exists = await prisma.room.findUnique({ where: { roomNumber: data.roomNumber } });
   if (exists) throw new ConflictError(`Room ${data.roomNumber} already exists`);
@@ -28,9 +30,23 @@ const createRoom = async (data: {
   const category = await prisma.roomCategory.findUnique({ where: { id: data.categoryId } });
   if (!category) throw new NotFoundError('Room category not found');
 
-  return prisma.room.create({ data: data as any, select: ROOM_SELECT });
-}
+  const { amenityIds, type, bedType, status, ...rest } = data;
 
+  return prisma.room.create({
+    data: {
+      ...rest,
+      type:    type    as RoomType,    // ✅ string → enum cast
+      bedType: bedType as BedType,     // ✅ string → enum cast
+      status:  (status ?? 'AVAILABLE') as RoomStatus, // ✅ string → enum cast
+      ...(amenityIds?.length && {
+        amenities: {
+          create: amenityIds.map((amenityId) => ({ amenityId })),
+        },
+      }),
+    },
+    select: ROOM_SELECT,
+  });
+};
 const getAllRooms = async (query: {
   page?: string; limit?: string; search?: string; type?: RoomType;
   status?: RoomStatus; floor?: string; minPrice?: string; maxPrice?: string;
@@ -175,36 +191,73 @@ const checkAvailability = async (query: {
 
 const uploadRoomImages = async (roomId: string, files: Express.Multer.File[]) => {
   const room = await prisma.room.findUnique({ where: { id: roomId } });
-  if (!room) throw new NotFoundError('Room not found');
+  if (!room) throw new NotFoundError("Room not found");
 
   const existingCount = await prisma.roomImage.count({ where: { roomId } });
-  const hasPrimary = await prisma.roomImage.findFirst({ where: { roomId, isPrimary: true } });
+
+  const hasPrimary = await prisma.roomImage.findFirst({
+    where: { roomId, isPrimary: true },
+  });
 
   const uploads = await Promise.all(
-    files.map((f, i) =>
-      uploadToCloudinary(f.buffer, 'rooms').then((result) => ({
-        roomId,
-        imageUrl: result.secureUrl,
-        isPrimary: !hasPrimary && i === 0,
-        sortOrder: existingCount + i,
-      })),
-    ),
-  );
+  files.map(async (f, i) => {
+    const result = await uploadToCloudinary(f.buffer, "rooms");
 
-  await prisma.roomImage.createMany({ data: uploads });
-  return prisma.room.findUnique({ where: { id: roomId }, select: ROOM_SELECT });
-}
+    return {
+      roomId,
+      imageUrl: result.secureUrl,
+      isPrimary: !hasPrimary && i === 0,
+      sortOrder: existingCount + i,
+    };
+  })
+);
+
+  console.log("UPLOADS READY:", uploads);
+
+  await prisma.roomImage.createMany({
+    data: uploads,
+  });
+
+  return prisma.room.findUnique({
+    where: { id: roomId },
+    select: ROOM_SELECT,
+  });
+};
+
 
 const deleteRoomImage = async (roomId: string, imageId: string) => {
-  const image = await prisma.roomImage.findFirst({ where: { id: imageId, roomId } });
-  if (!image) throw new NotFoundError('Image not found');
+  const image = await prisma.roomImage.findFirst({
+    where: { id: imageId, roomId },
+  });
 
-  // Extract public ID from Cloudinary URL
-  const publicId = image.imageUrl.split('/').slice(-2).join('/').split('.')[0];
+  if (!image) throw new NotFoundError("Image not found");
+
+  // delete from cloudinary
+  const publicId = image.imageUrl.split("/").slice(-2).join("/").split(".")[0];
   deleteFromCloudinary(`hotel-management/rooms/${publicId}`).catch(() => {});
 
   await prisma.roomImage.delete({ where: { id: imageId } });
-}
+
+  // ─────────────────────────────
+  // AFTER DELETE: ensure primary exists
+  // ─────────────────────────────
+
+  const remainingImages = await prisma.roomImage.findMany({
+    where: { roomId },
+    orderBy: { sortOrder: "asc" },
+  });
+
+  if (remainingImages.length === 0) return;
+
+  const hasPrimary = remainingImages.some((img) => img.isPrimary);
+
+  if (!hasPrimary) {
+    await prisma.roomImage.update({
+      where: { id: remainingImages[0].id },
+      data: { isPrimary: true },
+    });
+  }
+};
 
 const setPrimaryImage = async (roomId: string, imageId: string) => {
   await prisma.$transaction([
@@ -271,23 +324,40 @@ const updateCategory = async (id: string, data: Partial<{
 }
 
 const getRoomStats = async () => {
-  const [total, byStatus, byType, maintenanceCount] = await Promise.all([
+  const [total, byStatusRaw, byType, maintenanceCount] = await Promise.all([
     prisma.room.count({ where: { isActive: true } }),
-    prisma.room.groupBy({ by: ['status'], _count: { status: true }, where: { isActive: true } }),
-    prisma.room.groupBy({ by: ['type'], _count: { type: true }, where: { isActive: true } }),
-    prisma.room.count({ where: { status: 'MAINTENANCE', isActive: true } }),
+    prisma.room.groupBy({
+      by: ['status'],
+      _count: { status: true },
+      where: { isActive: true },
+    }),
+    prisma.room.groupBy({
+      by: ['type'],
+      _count: { type: true },
+      where: { isActive: true },
+    }),
+    prisma.room.count({
+      where: { status: 'MAINTENANCE', isActive: true },
+    }),
   ]);
 
-  const occupancyRate = byStatus.find((s) => s.status === 'OCCUPIED')?._count.status ?? 0;
+  const byStatus = byStatusRaw.reduce((acc, item) => {
+    acc[item.status] = item._count.status;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const occupancyRate =
+    byStatusRaw.find((s) => s.status === 'OCCUPIED')?._count.status ?? 0;
 
   return {
     total,
-    occupancyRate: total > 0 ? ((occupancyRate / total) * 100).toFixed(1) + '%' : '0%',
+    occupancyRate:
+      total > 0 ? ((occupancyRate / total) * 100).toFixed(1) + '%' : '0%',
     byStatus,
     byType,
     maintenanceCount,
   };
-}
+};
 
 const getAllAmenities = async () => {
   return prisma.amenity.findMany({ orderBy: { name: 'asc' } });
@@ -297,6 +367,28 @@ const createAmenity = async (data: { name: string; icon?: string; category?: str
   const exists = await prisma.amenity.findUnique({ where: { name: data.name } });
   if (exists) throw new ConflictError('Amenity already exists');
   return prisma.amenity.create({ data });
+}
+
+const updateAmenity = async (id: string, data: { name: string; icon?: string }) => {
+  const amenity = await prisma.amenity.findUnique({ where: { id } });
+  if (!amenity) throw new NotFoundError('Amenity not found');
+  return prisma.amenity.update({ where: { id }, data });
+};
+ 
+const deleteAmenity = async (id: string) => {
+  const amenity = await prisma.amenity.findUnique({ where: { id } });
+  if (!amenity) throw new NotFoundError('Amenity not found');
+  await prisma.amenity.delete({ where: { id } });
+};
+
+const getPricingRules = async (roomId: string) => {
+  const room = await prisma.room.findUnique({ where: { id: roomId } });
+  if (!room) throw new NotFoundError('Room not found');
+
+  return prisma.roomPricingRule.findMany({
+    where: { roomId },
+    orderBy: { startDate: 'asc' },
+  });
 }
 
 export const roomService = {
@@ -318,4 +410,7 @@ export const roomService = {
   getRoomStats,
   getAllAmenities,
   createAmenity,
+  updateAmenity,
+  deleteAmenity,
+  getPricingRules
 };

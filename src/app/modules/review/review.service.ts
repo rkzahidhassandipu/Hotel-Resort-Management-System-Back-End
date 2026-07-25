@@ -1,13 +1,55 @@
 import { Prisma, ReviewStatus } from '../../../generated/prisma/client';
 import { prisma } from '../../lib/prisma';
-import { NotFoundError, BadRequestError, ForbiddenError } from '../../errorHelpers/AppError';
+import { NotFoundError, BadRequestError, ForbiddenError, ConflictError } from '../../errorHelpers/AppError';
 import { getPaginationParams, getPaginationMeta } from '../../utils/helpers';
 
 // ── Review Service ───────────────────────────────────────
 
 const create = async (userId: string, data: any) => {
+  if (data.bookingId) {
+    const existing = await prisma.review.findFirst({
+      where: { userId, bookingId: data.bookingId },
+    });
+    if (existing) throw new ConflictError('You have already reviewed this booking');
+  }
+
   return prisma.review.create({
-    data: { ...data, userId },
+    data: {
+      userId,
+      bookingId: data.bookingId ?? null,
+      overallRating: data.overallRating,
+      title: data.title,
+      comment: data.comment,
+      isAnonymous: data.isAnonymous ?? false,
+      cleanlinessRating: data.cleanlinessRating,
+      serviceRating: data.serviceRating,
+      foodRating: data.foodRating,
+      locationRating: data.locationRating,
+      valueRating: data.valueRating,
+      status: 'APPROVED',
+    },
+  });
+};
+
+const update = async (id: string, userId: string, data: any) => {
+  const review = await prisma.review.findUnique({ where: { id } });
+  if (!review) throw new NotFoundError('Review not found');
+  if (review.userId !== userId) throw new ForbiddenError('Access denied');
+
+  return prisma.review.update({
+    where: { id },
+    data: {
+      overallRating: data.overallRating,
+      title: data.title,
+      comment: data.comment,
+      isAnonymous: data.isAnonymous,
+      cleanlinessRating: data.cleanlinessRating,
+      serviceRating: data.serviceRating,
+      foodRating: data.foodRating,
+      locationRating: data.locationRating,
+      valueRating: data.valueRating,
+      status: 'APPROVED',
+    },
   });
 };
 
@@ -163,4 +205,5 @@ export const reviewService = {
   respondToReview,
   deleteReview,
   getStats,
+  update,
 };

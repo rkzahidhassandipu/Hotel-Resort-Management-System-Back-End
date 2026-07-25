@@ -23,8 +23,8 @@ router.get(
   validateRequest(systemLogQuerySchema),
   systemController.getSystemLogs,
 );
-router.get('/logs/:id', systemController.getSystemLogById);
 router.delete('/logs/clear', systemController.clearOldLogs);
+router.get('/logs/:id', systemController.getSystemLogById);
 
 // Error Logs
 router.get(
